@@ -29,7 +29,7 @@ Claude Code 2.1.275 이상에서는 한 줄로도 됩니다.
 | 구현 | [feature-flow](plugins/feature-flow) | `/feature-flow:build` | 기능 구현과 테스트 작성을 서로 다른 에이전트에게 맡깁니다 |
 | 정리 | [refactor-sweep](plugins/refactor-sweep) | `/refactor-sweep:sweep` | 리팩터링 지점을 찾고, 동작을 그대로 둔 채 고칩니다 |
 | 검증 | [security-audit](plugins/security-audit) | `/security-audit:audit` | 변경분에서 실제로 악용될 수 있는 보안 문제만 찾습니다 |
-| 검증 | [codex-triage](plugins/codex-triage) | `/codex-triage:review-apply` | 커밋을 Codex에게 리뷰받고, 맞는 지적만 반영합니다 |
+| 검증 | [codex-triage](plugins/codex-triage) | `/codex-triage:review-apply` | 커밋 전에 Codex 리뷰를 받고, 리뷰를 통과하기 전에는 커밋·푸시를 막습니다 |
 | 반영 | [git-workflow](plugins/git-workflow) | `/git-workflow:commit-push` | 검사와 리뷰를 통과한 변경만 나눠서 커밋하고 푸시합니다 |
 | 기록 | [docs-progress](plugins/docs-progress) | `/docs-progress:update` | 다음 세션이 읽을 진행 문서를 짧게 유지합니다 |
 
@@ -53,7 +53,9 @@ Claude Code 2.1.275 이상에서는 한 줄로도 됩니다.
 
 security-audit는 읽기 전용입니다. "어떻게 악용되는가"를 한 줄로 쓸 수 없는 지적은 보고하지 않고, 지적이 없으면 없다고 보고합니다.
 
-codex-triage는 마지막 리뷰 지점부터 HEAD까지를 [Codex](https://github.com/openai/codex-plugin-cc)에게 리뷰받습니다. 각 지적을 코드로 확인해서 반영할 것과 기각할 것을 나누고, 그 근거를 표로 남깁니다. 한 번이라도 리뷰한 저장소에서는 리뷰하지 않은 커밋이 남아 있으면 세션을 끝내기 전에 리뷰를 요청합니다.
+codex-triage는 커밋하기 전의 변경을 [Codex](https://github.com/openai/codex-plugin-cc)에게 리뷰받습니다. 각 지적을 코드로 확인해서 반영할 것과 기각할 것을 나누고, 그 근거를 표로 남깁니다.
+
+리뷰를 통과하지 않은 소스 변경은 커밋할 수도, 푸시할 수도 없습니다. Claude가 실행하는 `git commit`과 `git push`를 훅이 검사합니다. 리뷰 통과는 파일 내용 단위로 기록되기 때문에, 리뷰 뒤에 파일을 고치면 다시 리뷰해야 하고, 리뷰를 마친 변경은 여러 커밋으로 나눠도 됩니다. 문서와 에셋은 검사하지 않습니다.
 
 ### 반영: git-workflow
 
@@ -67,7 +69,7 @@ lint와 타입 검사, 보안 감사, 코드 리뷰를 통과한 변경만 커�
 
 플러그인은 서로를 **설치되어 있을 때만** 사용합니다. 하나만 설치해도 동작하고, 함께 설치하면 단계가 이어집니다.
 
-- git-workflow는 security-audit가 있으면 보안 감사를, codex-triage가 있으면 리뷰를 커밋 조건으로 씁니다.
+- git-workflow는 security-audit가 있으면 보안 감사를, codex-triage가 있으면 커밋 전 리뷰를 커밋 조건으로 씁니다.
 - feature-flow와 refactor-sweep는 화면이 바뀌는 작업을 ui-design으로 먼저 디자인하고, 끝나면 docs-progress로 기록합니다.
 
 빠진 플러그인이 있으면 그 단계를 건너뛰고, 건너뛰었다는 사실을 보고에 적습니다.

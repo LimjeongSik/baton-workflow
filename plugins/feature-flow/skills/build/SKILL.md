@@ -76,7 +76,7 @@ git diff --stat
 
 프로젝트에 진행 문서(`docs/PROGRESS.md` 등)가 있으면 이번 작업을 반영한다. `docs-progress:update` 스킬을 쓸 수 있으면 그 스킬로 갱신한다.
 
-**커밋·푸시는 하지 않는다.** 사용자가 요청하면 `git-workflow:commit-push` 스킬을 쓸 수 있을 때 그 스킬로 진행한다. 커밋 뒤 `codex-triage:review-apply`를 쓸 수 있으면 리뷰를 권한다.
+**커밋·푸시는 하지 않는다.** 사용자가 요청하면 `git-workflow:commit-push` 스킬을 쓸 수 있을 때 그 스킬로 진행한다. `codex-triage:review-apply`를 쓸 수 있으면 4단계 검증이 끝난 뒤 그 스킬로 리뷰까지 받아 둔다. 리뷰를 통과하지 않은 변경은 커밋·푸시가 막힌다.
 
 ## 하지 않을 것
 

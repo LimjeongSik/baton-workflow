@@ -4,9 +4,9 @@
 # 사용법:
 #   bash codex-review.sh [adversarial-review|review] [옵션...] [포커스 텍스트]
 #
-# 기본 모드는 adversarial-review. 리뷰 범위는 마지막 리뷰 완료 지점(refs/codex-review/last)부터 HEAD까지다.
-# --base를 직접 주면 그 값을 우선한다.
-# 리뷰 원문은 stdout과 <저장소 루트>/.claude/review-logs/<HEAD 단축 sha>.md에 남는다 (CODEX_TRIAGE_LOG_DIR로 변경 가능).
+# 기본 모드는 adversarial-review. 범위는 커밋되지 않은 변경이 있으면 작업 트리, 없으면 마지막 리뷰 지점..HEAD다.
+# --base나 --scope를 직접 주면 그 값을 우선한다.
+# 리뷰 원문은 stdout과 <저장소 루트>/.claude/review-logs/<시각>-<HEAD 단축 sha>.md에 남는다 (CODEX_TRIAGE_LOG_DIR로 변경 가능).
 set -euo pipefail
 
 if ! command -v codex >/dev/null 2>&1; then
@@ -39,24 +39,29 @@ if [[ $# -gt 0 && "$1" != -* ]]; then
     shift
 fi
 
-# 마지막 리뷰 지점이 없으면 첫 커밋(루트)부터 리뷰한다.
-BASE="$(git rev-parse -q --verify refs/codex-review/last || git rev-list --max-parents=0 HEAD | tail -1)"
-
-HAS_BASE=0
+HAS_TARGET=0
 for arg in "$@"; do
-    if [[ "${arg}" == "--base" || "${arg}" == --base=* ]]; then
-        HAS_BASE=1
-    fi
+    case "${arg}" in
+        --base|--base=*|--scope|--scope=*) HAS_TARGET=1 ;;
+    esac
 done
 
+# 범위를 직접 주지 않았으면:
+# - 커밋되지 않은 변경이 있으면 작업 트리(staged + unstaged + untracked)를 리뷰한다. 커밋 전에 리뷰하는 기본 흐름이다.
+# - 작업 트리가 깨끗하면 마지막 리뷰 지점(없으면 첫 커밋)부터 HEAD까지의 커밋을 리뷰한다.
 EXTRA=()
-if [[ "${HAS_BASE}" -eq 0 ]]; then
-    EXTRA=(--base "${BASE}" --scope branch)
+if [[ "${HAS_TARGET}" -eq 0 ]]; then
+    if [[ -n "$(git status --porcelain --untracked-files=all)" ]]; then
+        EXTRA=(--scope working-tree)
+    else
+        BASE="$(git rev-parse -q --verify refs/codex-review/last || git rev-list --max-parents=0 HEAD | tail -1)"
+        EXTRA=(--base "${BASE}")
+    fi
 fi
 
 LOG_DIR="${CODEX_TRIAGE_LOG_DIR:-${REPO_ROOT}/.claude/review-logs}"
 mkdir -p "${LOG_DIR}"
-LOG_FILE="${LOG_DIR}/$(git rev-parse --short HEAD).md"
+LOG_FILE="${LOG_DIR}/$(date +%Y%m%d-%H%M%S)-$(git rev-parse --short HEAD 2>/dev/null || echo initial).md"
 
 if ! git check-ignore -q "${LOG_FILE}" 2>/dev/null; then
     echo "참고: ${LOG_DIR#"${REPO_ROOT}"/}/ 가 .gitignore에 없습니다. 리뷰 로그가 커밋되지 않게 추가를 권장합니다." >&2

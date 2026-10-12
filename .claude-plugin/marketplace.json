@@ -12,8 +12,8 @@
     {
       "name": "codex-triage",
       "source": "./plugins/codex-triage",
-      "description": "커밋 단위로 Codex 리뷰를 받고, 지적을 코드로 검증해 타당한 것만 반영하는 워크플로우",
-      "version": "0.1.0",
+      "description": "커밋 전에 Codex 리뷰를 받아 검증된 지적만 반영하고, 리뷰를 통과하기 전에는 커밋·푸시를 막는 게이트",
+      "version": "0.2.0",
       "category": "development",
       "keywords": [
         "codex",
@@ -60,7 +60,7 @@
       "name": "git-workflow",
       "source": "./plugins/git-workflow",
       "description": "검사·보안 감사·리뷰 게이트를 거쳐 변경을 나눠 커밋하고 푸시하는 워크플로우",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "category": "productivity",
       "keywords": [
         "git",
