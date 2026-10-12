@@ -8,7 +8,20 @@ Claude Code로 개발할 때 매번 같은 지시를 반복하지 않도록, 자
 
 ## 설치
 
-마켓플레이스를 한 번 등록하고, 원하는 플러그인을 설치합니다.
+### 전부 설치
+
+codex-triage와 ui-design이 쓰는 외부 플러그인의 마켓플레이스를 먼저 등록한 뒤, 묶음 플러그인 `all`을 설치합니다.
+
+```
+/plugin marketplace add openai/codex-plugin-cc
+/plugin marketplace add anthropics/claude-plugins-official
+/plugin marketplace add LimjeongSik/my-tools-plugins
+/plugin install all@my-tools
+```
+
+`all`은 자체 기능이 없습니다. 아래 7개 플러그인과 그 의존성(`codex`, `frontend-design`)을 함께 설치하는 역할만 합니다. `anthropics/claude-plugins-official`은 대부분 이미 등록되어 있습니다.
+
+### 골라서 설치
 
 ```
 /plugin marketplace add LimjeongSik/my-tools-plugins
@@ -19,6 +32,14 @@ Claude Code 2.1.275 이상에서는 한 줄로도 됩니다.
 
 ```
 /plugin install feature-flow --marketplace LimjeongSik/my-tools-plugins
+```
+
+codex-triage를 설치하려면 `openai/codex-plugin-cc` 마켓플레이스가, ui-design을 설치하려면 `anthropics/claude-plugins-official` 마켓플레이스가 등록되어 있어야 합니다.
+
+### 업데이트
+
+```
+/plugin marketplace update my-tools
 ```
 
 ## 단계별 플러그인

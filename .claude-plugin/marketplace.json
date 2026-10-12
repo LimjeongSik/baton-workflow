@@ -10,6 +10,16 @@
   },
   "plugins": [
     {
+      "name": "all",
+      "source": "./plugins/all",
+      "description": "my-tools의 모든 플러그인을 한 번에 설치하는 묶음",
+      "version": "0.1.0",
+      "category": "productivity",
+      "keywords": [
+        "bundle"
+      ]
+    },
+    {
       "name": "codex-triage",
       "source": "./plugins/codex-triage",
       "description": "커밋 전에 Codex 리뷰를 받아 검증된 지적만 반영하고, 리뷰를 통과하기 전에는 커밋·푸시를 막는 게이트",

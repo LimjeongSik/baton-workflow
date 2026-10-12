@@ -1,0 +1,20 @@
+{
+  "name": "all",
+  "version": "0.1.0",
+  "description": "my-tools의 모든 플러그인을 한 번에 설치하는 묶음. 자체 기능은 없고 나머지 플러그인을 의존성으로 설치한다",
+  "author": {
+    "name": "LimjeongSik",
+    "url": "https://github.com/LimjeongSik"
+  },
+  "repository": "https://github.com/LimjeongSik/my-tools-plugins",
+  "license": "MIT",
+  "dependencies": [
+    "ui-design",
+    "feature-flow",
+    "refactor-sweep",
+    "security-audit",
+    "codex-triage",
+    "git-workflow",
+    "docs-progress"
+  ]
+}
