@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="440" viewBox="0 0 1280 440" role="img" aria-labelledby="title desc">
+  <title id="title">my-tools</title>
+  <desc id="desc">설계, 구현, 정리, 검증, 반영, 기록으로 이어지는 작업 흐름과 각 단계를 맡는 Claude Code 플러그인</desc>
+  <style>
+    text { font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif; fill: #23281F; }
+    .title { font-size: 76px; font-weight: 800; letter-spacing: -2.5px; }
+    .lede { font-size: 23px; font-weight: 500; fill: #4A5D43; }
+    .stage { font-size: 21px; font-weight: 700; }
+    .plugin { font-size: 17px; font-weight: 500; fill: #4A5D43; }
+    .note { font-size: 15px; font-weight: 500; fill: #6F776B; }
+  </style>
+
+  <rect width="1280" height="440" fill="#E9ECE5"/>
+
+  <text x="72" y="118" class="title">my-tools</text>
+  <text x="76" y="162" class="lede">하루의 개발 흐름을 단계별로 맡는 Claude Code 플러그인. 필요한 단계만 골라 설치한다.</text>
+
+  <!-- 작업이 지나가는 경로 -->
+  <rect x="72" y="263" width="1136" height="14" rx="7" fill="#E3A21A"/>
+
+  <!-- 다음 세션으로 돌아가는 기록 -->
+  <path d="M1196 286 V392 H84 V286" fill="none" stroke="#6F776B" stroke-width="2" stroke-dasharray="6 6"/>
+  <path d="M76 296 L84 284 L92 296" fill="none" stroke="#6F776B" stroke-width="2" stroke-linejoin="round"/>
+  <text x="640" y="418" class="note" text-anchor="middle">기록은 다음 세션이 가장 먼저 읽는다</text>
+
+  <g text-anchor="middle">
+    <circle cx="152" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5"/>
+    <text x="152" y="236" class="stage">설계</text>
+    <text x="152" y="322" class="plugin">ui-design</text>
+
+    <circle cx="347" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5"/>
+    <text x="347" y="236" class="stage">구현</text>
+    <text x="347" y="322" class="plugin">feature-flow</text>
+
+    <circle cx="542" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5" stroke-dasharray="5 4"/>
+    <text x="542" y="236" class="stage">정리</text>
+    <text x="542" y="322" class="plugin">refactor-sweep</text>
+    <text x="542" y="344" class="note">필요할 때</text>
+
+    <circle cx="737" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5"/>
+    <text x="737" y="236" class="stage">검증</text>
+    <text x="737" y="322" class="plugin">security-audit</text>
+    <text x="737" y="344" class="plugin">codex-triage</text>
+
+    <circle cx="932" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5"/>
+    <text x="932" y="236" class="stage">반영</text>
+    <text x="932" y="322" class="plugin">git-workflow</text>
+
+    <circle cx="1128" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5"/>
+    <text x="1128" y="236" class="stage">기록</text>
+    <text x="1128" y="322" class="plugin">docs-progress</text>
+  </g>
+</svg>

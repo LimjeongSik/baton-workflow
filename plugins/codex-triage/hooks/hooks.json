@@ -1,0 +1,17 @@
+{
+  "description": "리뷰되지 않은 커밋이 남아 있으면 종료 전에 review-apply 실행을 요구하는 Stop 게이트",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/review-gate.mjs\"",
+            "timeout": 10,
+            "statusMessage": "codex 리뷰 필요 여부 확인 중"
+          }
+        ]
+      }
+    ]
+  }
+}

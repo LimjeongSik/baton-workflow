@@ -1,0 +1,101 @@
+{
+  "name": "my-tools",
+  "owner": {
+    "name": "LimjeongSik",
+    "url": "https://github.com/LimjeongSik"
+  },
+  "metadata": {
+    "description": "LimjeongSik이 자주 쓰는 Claude Code 플러그인 모음",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "codex-triage",
+      "source": "./plugins/codex-triage",
+      "description": "커밋 단위로 Codex 리뷰를 받고, 지적을 코드로 검증해 타당한 것만 반영하는 워크플로우",
+      "version": "0.1.0",
+      "category": "development",
+      "keywords": [
+        "codex",
+        "code-review",
+        "git"
+      ]
+    },
+    {
+      "name": "refactor-sweep",
+      "source": "./plugins/refactor-sweep",
+      "description": "정찰 → 판별 → 실행 3단계로 동작을 그대로 둔 채 리팩터링하는 워크플로우",
+      "version": "0.1.0",
+      "category": "development",
+      "keywords": [
+        "refactor",
+        "subagents"
+      ]
+    },
+    {
+      "name": "feature-flow",
+      "source": "./plugins/feature-flow",
+      "description": "구현 → 테스트 → 검증을 역할별 서브에이전트로 나눠 진행하는 기능 개발 워크플로우",
+      "version": "0.1.0",
+      "category": "development",
+      "keywords": [
+        "feature",
+        "testing",
+        "subagents"
+      ]
+    },
+    {
+      "name": "security-audit",
+      "source": "./plugins/security-audit",
+      "description": "변경분을 보안 관점으로 감사해 악용 경로가 있는 지적만 보고하는 읽기 전용 감사",
+      "version": "0.1.0",
+      "category": "security",
+      "keywords": [
+        "security",
+        "audit",
+        "secrets"
+      ]
+    },
+    {
+      "name": "git-workflow",
+      "source": "./plugins/git-workflow",
+      "description": "검사·보안 감사·리뷰 게이트를 거쳐 변경을 나눠 커밋하고 푸시하는 워크플로우",
+      "version": "0.1.0",
+      "category": "productivity",
+      "keywords": [
+        "git",
+        "commit",
+        "push"
+      ]
+    },
+    {
+      "name": "docs-progress",
+      "source": "./plugins/docs-progress",
+      "description": "다음 세션이 먼저 읽는 진행 문서(docs/PROGRESS.md)를 날짜별 최종 상태만 남기는 방식으로 가볍게 유지",
+      "version": "0.1.0",
+      "category": "productivity",
+      "keywords": [
+        "docs",
+        "progress",
+        "handoff"
+      ]
+    },
+    {
+      "name": "ui-design",
+      "source": "./plugins/ui-design",
+      "description": "frontend-design 기반으로 레퍼런스를 반영하고, 분야(대시보드·앱·웹)에 맞추고, AI가 만든 티가 나지 않는 UI를 설계·구현",
+      "version": "0.1.0",
+      "category": "design",
+      "keywords": [
+        "design",
+        "ui",
+        "ux",
+        "frontend"
+      ]
+    }
+  ],
+  "allowCrossMarketplaceDependenciesOn": [
+    "openai-codex",
+    "claude-plugins-official"
+  ]
+}
