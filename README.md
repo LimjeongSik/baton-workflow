@@ -15,8 +15,8 @@ review와 ui가 쓰는 외부 마켓플레이스를 먼저 등록한 뒤, 묶음
 ```
 /plugin marketplace add openai/codex-plugin-cc
 /plugin marketplace add anthropics/claude-plugins-official
-/plugin marketplace add LimjeongSik/my-tools-plugins
-/plugin install all@my-tools
+/plugin marketplace add LimjeongSik/baton-workflow
+/plugin install all@baton
 ```
 
 `all`은 자체 기능 없이, 아래 플러그인 9개와 그 의존성(`codex`, `frontend-design`)을 한 번에 설치합니다.
@@ -24,11 +24,11 @@ review와 ui가 쓰는 외부 마켓플레이스를 먼저 등록한 뒤, 묶음
 ### 골라서 설치
 
 ```
-/plugin marketplace add LimjeongSik/my-tools-plugins
-/plugin install feature@my-tools
+/plugin marketplace add LimjeongSik/baton-workflow
+/plugin install feature@baton
 ```
 
-Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace LimjeongSik/my-tools-plugins` 한 줄로도 됩니다. review는 `openai/codex-plugin-cc`, ui는 `anthropics/claude-plugins-official` 마켓플레이스가 등록되어 있어야 설치됩니다.
+Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace LimjeongSik/baton-workflow` 한 줄로도 됩니다. review는 `openai/codex-plugin-cc`, ui는 `anthropics/claude-plugins-official` 마켓플레이스가 등록되어 있어야 설치됩니다.
 
 ### 설치한 뒤
 
@@ -64,10 +64,12 @@ Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace Limje
 ### 업데이트
 
 ```
-/plugin marketplace update my-tools
+/plugin marketplace update baton
 ```
 
-플러그인 이름이 바뀌었습니다. 예전 이름으로 설치했다면 지우고 새 이름으로 다시 설치하세요. 리뷰 게이트 환경 변수도 `CODEX_TRIAGE_GATE*`에서 `REVIEW_GATE*`로 바뀌었습니다.
+저장소와 마켓플레이스 이름이 `my-tools-plugins` / `my-tools`에서 `baton-workflow` / `baton`으로 바뀌었습니다. `@my-tools`로 설치했다면 `/plugin marketplace remove my-tools`로 지운 뒤 위의 설치 명령으로 다시 설치하세요.
+
+플러그인 이름도 바뀌었습니다. 예전 이름으로 설치했다면 지우고 새 이름으로 다시 설치하세요. 리뷰 게이트 환경 변수도 `CODEX_TRIAGE_GATE*`에서 `REVIEW_GATE*`로 바뀌었습니다.
 
 | 예전 | 지금 |
 |---|---|

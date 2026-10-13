@@ -1,5 +1,5 @@
 {
-  "name": "my-tools",
+  "name": "baton",
   "owner": {
     "name": "LimjeongSik",
     "url": "https://github.com/LimjeongSik"
@@ -12,7 +12,7 @@
     {
       "name": "all",
       "source": "./plugins/all",
-      "description": "my-tools의 모든 플러그인을 한 번에 설치하는 묶음",
+      "description": "baton의 모든 플러그인을 한 번에 설치하는 묶음",
       "version": "0.1.0",
       "category": "productivity",
       "keywords": [

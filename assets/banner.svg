@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="440" viewBox="0 0 1280 440" role="img" aria-labelledby="title desc">
-  <title id="title">my-tools</title>
+  <title id="title">baton</title>
   <desc id="desc">설계, 구현, 정리, 검증, 반영, 기록으로 이어지는 작업 흐름과 각 단계를 맡는 Claude Code 플러그인</desc>
   <style>
     text { font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif; fill: #23281F; }
@@ -12,7 +12,7 @@
 
   <rect width="1280" height="440" fill="#E9ECE5"/>
 
-  <text x="72" y="118" class="title">my-tools</text>
+  <text x="72" y="118" class="title">baton</text>
   <text x="76" y="162" class="lede">하루의 개발 흐름을 단계별로 맡는 Claude Code 플러그인. 필요한 단계만 골라 설치한다.</text>
 
   <!-- 작업이 지나가는 경로 -->

@@ -5,8 +5,8 @@
 ## 설치
 
 ```
-/plugin marketplace add LimjeongSik/my-tools-plugins
-/plugin install ui@my-tools
+/plugin marketplace add LimjeongSik/baton-workflow
+/plugin install ui@baton
 ```
 
 `frontend-design@claude-plugins-official`이 의존성으로 함께 설치됩니다.

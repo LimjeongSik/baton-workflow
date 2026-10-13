@@ -6,7 +6,7 @@
     "name": "LimjeongSik",
     "url": "https://github.com/LimjeongSik"
   },
-  "repository": "https://github.com/LimjeongSik/my-tools-plugins",
+  "repository": "https://github.com/LimjeongSik/baton-workflow",
   "license": "MIT",
   "keywords": ["refactor", "subagents"]
 }

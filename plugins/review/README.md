@@ -8,8 +8,8 @@
 
 ```
 /plugin marketplace add openai/codex-plugin-cc
-/plugin marketplace add LimjeongSik/my-tools-plugins
-/plugin install review@my-tools
+/plugin marketplace add LimjeongSik/baton-workflow
+/plugin install review@baton
 ```
 
 codex CLI도 필요합니다:
