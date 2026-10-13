@@ -25,6 +25,7 @@ git status --short --untracked-files=all
 ### 프로젝트 파악
 
 - 루트 `CLAUDE.md` / `AGENTS.md`, 진행·결정 문서(`docs/PROGRESS.md`, ADR 등)가 있으면 읽는다. 판별 단계에서 기준이 된다.
+- `docs/PREFERENCES.md`(사용자 선호 문서)가 있으면 공통 절과 리팩터링 절을 읽는다. `[확정]` 항목은 묻지 않고 기본값으로 따르고, `[관찰]` 항목은 선택지를 고를 때 먼저 고려한다. 이번 요청과 다르면 요청을 따른다. 사용자가 전에 거절한 종류의 후보는 판별에서 기각한다.
 - **검사 명령을 정한다.** 우선순위는 다음과 같다:
   1. `CLAUDE.md` / `AGENTS.md`에 적힌 명령
   2. `package.json`의 `scripts`(lint/check, typecheck, test). 패키지 매니저는 lockfile로 판단하고, TypeScript인데 typecheck 스크립트가 없으면 `tsc --noEmit`을 쓴다.
@@ -128,6 +129,8 @@ git diff --stat
 프로젝트에 진행 문서(`docs/PROGRESS.md` 등)가 있으면 이번 작업을 반영한다. `progress:update` 스킬을 쓸 수 있으면 그 스킬로 갱신한다.
 
 새 도메인 폴더를 만들었거나 폴더의 계약·규칙을 바꿨고 `context:sync` 스킬을 쓸 수 있으면, 그 폴더 경로를 인자로 실행해 하위 CLAUDE.md와 루트 목록을 맞춘다.
+
+**선호 기록:** 이번 작업에서 사용자가 결과를 고치게 했거나, 선택지 중 하나를 골랐거나, 제안을 거절했거나, "앞으로는" 같은 지시를 했고 `prefs:learn` 스킬을 쓸 수 있으면, 그 내용(예: 채택 목록에서 사용자가 빼라고 한 후보와 그 이유, 보류 항목에 대한 결정)를 요약해 넘겨 실행한다. 이번 작업에만 해당하는 내용은 넘기지 않는다.
 
 ## 하지 않을 것
 
