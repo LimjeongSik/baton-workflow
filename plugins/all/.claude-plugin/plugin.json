@@ -12,6 +12,7 @@
     "ui",
     "feature",
     "refactor",
+    "test",
     "security",
     "review",
     "git",

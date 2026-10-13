@@ -39,8 +39,9 @@
 
     <circle cx="737" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5"/>
     <text x="737" y="236" class="stage">검증</text>
-    <text x="737" y="322" class="plugin">security</text>
-    <text x="737" y="344" class="plugin">review</text>
+    <text x="737" y="322" class="plugin">test</text>
+    <text x="737" y="344" class="plugin">security</text>
+    <text x="737" y="366" class="plugin">review</text>
 
     <circle cx="932" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5"/>
     <text x="932" y="236" class="stage">반영</text>

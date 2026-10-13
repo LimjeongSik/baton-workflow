@@ -1,0 +1,12 @@
+{
+  "name": "test",
+  "version": "0.1.0",
+  "description": "변경된 코드의 테스트를 폴더별 __tests__에 작성하고 실행. 러너가 없으면 설치 여부를 묻고 설치 후 진행",
+  "author": {
+    "name": "LimjeongSik",
+    "url": "https://github.com/LimjeongSik"
+  },
+  "repository": "https://github.com/LimjeongSik/my-tools-plugins",
+  "license": "MIT",
+  "keywords": ["test", "vitest", "jest"]
+}
