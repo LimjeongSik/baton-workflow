@@ -49,5 +49,6 @@
     <circle cx="1128" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5"/>
     <text x="1128" y="236" class="stage">기록</text>
     <text x="1128" y="322" class="plugin">progress</text>
+    <text x="1128" y="344" class="plugin">context</text>
   </g>
 </svg>

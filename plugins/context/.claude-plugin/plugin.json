@@ -1,0 +1,12 @@
+{
+  "name": "context",
+  "version": "0.1.0",
+  "description": "루트 CLAUDE.md는 최소로, 폴더별 규칙·계약은 하위 CLAUDE.md로 나눠 프로젝트 컨벤션을 맞추고 유지",
+  "author": {
+    "name": "LimjeongSik",
+    "url": "https://github.com/LimjeongSik"
+  },
+  "repository": "https://github.com/LimjeongSik/my-tools-plugins",
+  "license": "MIT",
+  "keywords": ["claude-md", "conventions", "docs"]
+}

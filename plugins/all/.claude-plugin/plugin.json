@@ -15,6 +15,7 @@
     "security",
     "review",
     "git",
-    "progress"
+    "progress",
+    "context"
   ]
 }
