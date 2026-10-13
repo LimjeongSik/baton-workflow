@@ -32,11 +32,9 @@ Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace Limje
 
 ### 설치한 뒤
 
-작업할 프로젝트에서 `/context:sync`를 한 번 실행해 루트 CLAUDE.md에 규칙을 추가해 두면 좋습니다. 그 프로젝트의 실제 명령, 파일 컨벤션, 하위 CLAUDE.md 목록이 정리되고, 이후 Claude는 매 세션 이 규칙대로 작업합니다.
+위의 전부 설치를 마친 뒤, 작업할 프로젝트에서 `/context:sync`를 한 번 실행해 루트 CLAUDE.md에 규칙을 추가해 두면 좋습니다. 그 프로젝트의 실제 명령, 파일 컨벤션, 하위 CLAUDE.md 목록이 정리되고, 이후 Claude는 매 세션 이 규칙대로 작업합니다.
 
 ```
-/plugin marketplace add LimjeongSik/my-tools-plugins
-/plugin install all@my-tools
 /context:sync
 ```
 
