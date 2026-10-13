@@ -7,7 +7,7 @@
 // 끄기: REVIEW_GATE=0 (전체), REVIEW_GATE_COMMIT=0 (커밋 먼저 하고 리뷰하는 흐름), REVIEW_GATE_PUSH=0
 // codex를 쓸 수 없으면 막지 않고 사용자에게 확인을 받는다. 판단할 수 없는 상황에서는 통과시킨다.
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import {
     describe,
@@ -95,6 +95,14 @@ function segments(cmd) {
 
 const expandHome = (p) => p.replace(/^~(?=$|\/)/, process.env.HOME ?? "~");
 
+const realpathOr = (p) => {
+    try {
+        return realpathSync(p);
+    } catch {
+        return p;
+    }
+};
+
 // 값을 하나 받는 commit 옵션 (이 값은 경로가 아니다)
 const COMMIT_VALUE_OPTIONS = new Set([
     "-m", "--message", "-F", "--file", "-C", "--reuse-message", "-c", "--reedit-message",
@@ -161,8 +169,9 @@ function findGitCalls(cmd, startDir) {
 }
 
 // 이번 커밋에 실제로 담길 수 있는 변경만 고른다: index는 항상, 작업 트리는 add/commit 인자가 가리키는 것만
+// root는 git이 돌려준 실제 경로이므로, callDir도 실제 경로로 바꿔야 상대 경로가 맞는다 (/var → /private/var 같은 심볼릭 링크).
 function commitCandidates(changes, staged, callDir, root) {
-    const prefix = path.relative(root, callDir);
+    const prefix = path.relative(root, realpathOr(callDir));
     const targets = staged.paths.map((p) => path.normalize(path.join(prefix, p)));
     const matches = (file) => targets.some((t) => t === "." || file === t || file.startsWith(`${t}/`));
     return changes.filter((change) => {
