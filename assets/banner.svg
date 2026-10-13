@@ -26,28 +26,28 @@
   <g text-anchor="middle">
     <circle cx="152" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5"/>
     <text x="152" y="236" class="stage">설계</text>
-    <text x="152" y="322" class="plugin">ui-design</text>
+    <text x="152" y="322" class="plugin">ui</text>
 
     <circle cx="347" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5"/>
     <text x="347" y="236" class="stage">구현</text>
-    <text x="347" y="322" class="plugin">feature-flow</text>
+    <text x="347" y="322" class="plugin">feature</text>
 
     <circle cx="542" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5" stroke-dasharray="5 4"/>
     <text x="542" y="236" class="stage">정리</text>
-    <text x="542" y="322" class="plugin">refactor-sweep</text>
+    <text x="542" y="322" class="plugin">refactor</text>
     <text x="542" y="344" class="note">필요할 때</text>
 
     <circle cx="737" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5"/>
     <text x="737" y="236" class="stage">검증</text>
-    <text x="737" y="322" class="plugin">security-audit</text>
-    <text x="737" y="344" class="plugin">codex-triage</text>
+    <text x="737" y="322" class="plugin">security</text>
+    <text x="737" y="344" class="plugin">review</text>
 
     <circle cx="932" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5"/>
     <text x="932" y="236" class="stage">반영</text>
-    <text x="932" y="322" class="plugin">git-workflow</text>
+    <text x="932" y="322" class="plugin">git</text>
 
     <circle cx="1128" cy="270" r="13" fill="#E9ECE5" stroke="#23281F" stroke-width="3.5"/>
     <text x="1128" y="236" class="stage">기록</text>
-    <text x="1128" y="322" class="plugin">docs-progress</text>
+    <text x="1128" y="322" class="plugin">progress</text>
   </g>
 </svg>

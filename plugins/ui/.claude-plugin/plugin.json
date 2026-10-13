@@ -1,0 +1,13 @@
+{
+  "name": "ui",
+  "version": "0.1.0",
+  "description": "frontend-design 기반으로 레퍼런스를 반영하고, 분야(대시보드·앱·웹)에 맞추고, AI가 만든 티가 나지 않는 UI를 설계·구현",
+  "author": {
+    "name": "LimjeongSik",
+    "url": "https://github.com/LimjeongSik"
+  },
+  "repository": "https://github.com/LimjeongSik/my-tools-plugins",
+  "license": "MIT",
+  "keywords": ["design", "ui", "ux", "frontend"],
+  "dependencies": ["frontend-design@claude-plugins-official"]
+}

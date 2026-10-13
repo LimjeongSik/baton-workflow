@@ -1,0 +1,29 @@
+{
+  "description": "리뷰를 통과하지 않은 소스 변경의 커밋·푸시를 막고, 종료 전에 리뷰를 요구하는 게이트",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/guard-git.mjs\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/stop-check.mjs\"",
+            "timeout": 15,
+            "statusMessage": "codex 리뷰 필요 여부 확인 중"
+          }
+        ]
+      }
+    ]
+  }
+}

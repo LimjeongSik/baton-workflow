@@ -9,12 +9,12 @@
   "repository": "https://github.com/LimjeongSik/my-tools-plugins",
   "license": "MIT",
   "dependencies": [
-    "ui-design",
-    "feature-flow",
-    "refactor-sweep",
-    "security-audit",
-    "codex-triage",
-    "git-workflow",
-    "docs-progress"
+    "ui",
+    "feature",
+    "refactor",
+    "security",
+    "review",
+    "git",
+    "progress"
   ]
 }

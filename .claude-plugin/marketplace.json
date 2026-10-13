@@ -20,8 +20,8 @@
       ]
     },
     {
-      "name": "codex-triage",
-      "source": "./plugins/codex-triage",
+      "name": "review",
+      "source": "./plugins/review",
       "description": "커밋 전에 Codex 리뷰를 받아 검증된 지적만 반영하고, 리뷰를 통과하기 전에는 커밋·푸시를 막는 게이트",
       "version": "0.2.0",
       "category": "development",
@@ -32,8 +32,8 @@
       ]
     },
     {
-      "name": "refactor-sweep",
-      "source": "./plugins/refactor-sweep",
+      "name": "refactor",
+      "source": "./plugins/refactor",
       "description": "정찰 → 판별 → 실행 3단계로 동작을 그대로 둔 채 리팩터링하는 워크플로우",
       "version": "0.1.0",
       "category": "development",
@@ -43,8 +43,8 @@
       ]
     },
     {
-      "name": "feature-flow",
-      "source": "./plugins/feature-flow",
+      "name": "feature",
+      "source": "./plugins/feature",
       "description": "구현 → 테스트 → 검증을 역할별 서브에이전트로 나눠 진행하는 기능 개발 워크플로우",
       "version": "0.1.0",
       "category": "development",
@@ -55,8 +55,8 @@
       ]
     },
     {
-      "name": "security-audit",
-      "source": "./plugins/security-audit",
+      "name": "security",
+      "source": "./plugins/security",
       "description": "변경분을 보안 관점으로 감사해 악용 경로가 있는 지적만 보고하는 읽기 전용 감사",
       "version": "0.1.0",
       "category": "security",
@@ -67,8 +67,8 @@
       ]
     },
     {
-      "name": "git-workflow",
-      "source": "./plugins/git-workflow",
+      "name": "git",
+      "source": "./plugins/git",
       "description": "검사·보안 감사·리뷰 게이트를 거쳐 변경을 나눠 커밋하고 푸시하는 워크플로우",
       "version": "0.2.0",
       "category": "productivity",
@@ -79,8 +79,8 @@
       ]
     },
     {
-      "name": "docs-progress",
-      "source": "./plugins/docs-progress",
+      "name": "progress",
+      "source": "./plugins/progress",
       "description": "다음 세션이 먼저 읽는 진행 문서(docs/PROGRESS.md)를 날짜별 최종 상태만 남기는 방식으로 가볍게 유지",
       "version": "0.1.0",
       "category": "productivity",
@@ -91,8 +91,8 @@
       ]
     },
     {
-      "name": "ui-design",
-      "source": "./plugins/ui-design",
+      "name": "ui",
+      "source": "./plugins/ui",
       "description": "frontend-design 기반으로 레퍼런스를 반영하고, 분야(대시보드·앱·웹)에 맞추고, AI가 만든 티가 나지 않는 UI를 설계·구현",
       "version": "0.1.0",
       "category": "design",

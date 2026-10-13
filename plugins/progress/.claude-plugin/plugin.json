@@ -1,0 +1,12 @@
+{
+  "name": "progress",
+  "version": "0.1.0",
+  "description": "다음 세션이 먼저 읽는 진행 문서(docs/PROGRESS.md)를 날짜별 최종 상태만 남기는 방식으로 가볍게 유지",
+  "author": {
+    "name": "LimjeongSik",
+    "url": "https://github.com/LimjeongSik"
+  },
+  "repository": "https://github.com/LimjeongSik/my-tools-plugins",
+  "license": "MIT",
+  "keywords": ["docs", "progress", "handoff"]
+}
