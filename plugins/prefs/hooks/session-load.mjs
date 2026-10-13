@@ -39,7 +39,7 @@ if (!body) done();
 const truncated = body.length > MAX_CHARS;
 const shown = truncated ? body.slice(0, MAX_CHARS) : body;
 const tail = truncated ? `\n\n(문서가 길어 ${MAX_CHARS}자에서 잘랐다. 나머지는 ${DOC}를 직접 읽고, 작업을 마칠 때 prefs:learn 스킬로 문서를 줄인다.)` : "";
-const context = `이 프로젝트의 사용자 선호 문서(${DOC})다. 사용자가 이전 작업에서 고르거나 고쳐 준 방식이다. [확정] 항목은 묻지 않고 기본값으로 따르고, [관찰] 항목은 선택지를 고를 때 먼저 고려한다. 이번 요청이 이 문서와 다르면 요청을 따른다.\n\n${shown}${tail}`;
+const context = `이 프로젝트의 사용자 선호 문서(${DOC})다. 사용자가 이전 작업에서 고르거나 고쳐 준 방식이다. [확정] 항목은 묻지 않고 기본값으로 따르고, [관찰] 항목은 선택지를 고를 때 먼저 고려하고, [추정] 항목은 다른 근거가 없을 때만 따르고 따랐으면 보고에 밝힌다. 이번 요청이 이 문서와 다르면 요청을 따른다. 작업 중 사용자가 고르거나 고친 것, 또는 사용자의 행동에서 새로 드러난 방식이 있으면 작업을 마칠 때 prefs:learn 스킬로 기록한다.\n\n${shown}${tail}`;
 
 process.stdout.write(
     `${JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: context } })}\n`,
