@@ -30,6 +30,16 @@ review와 ui가 쓰는 외부 마켓플레이스를 먼저 등록한 뒤, 묶음
 
 Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace LimjeongSik/my-tools-plugins` 한 줄로도 됩니다. review는 `openai/codex-plugin-cc`, ui는 `anthropics/claude-plugins-official` 마켓플레이스가 등록되어 있어야 설치됩니다.
 
+### 설치한 뒤
+
+작업할 프로젝트에서 `/context:sync`를 한 번 실행해 루트 CLAUDE.md에 규칙을 추가해 두면 좋습니다. 그 프로젝트의 실제 명령, 파일 컨벤션, 하위 CLAUDE.md 목록이 정리되고, 이후 Claude는 매 세션 이 규칙대로 작업합니다.
+
+```
+/plugin marketplace add LimjeongSik/my-tools-plugins
+/plugin install all@my-tools
+/context:sync
+```
+
 ### 업데이트
 
 ```
