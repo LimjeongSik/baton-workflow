@@ -31,9 +31,10 @@ Claude Code는 루트 CLAUDE.md를 세션마다 읽고, 하위 CLAUDE.md는 그 
 JS/TS 프로젝트에 넣는 기본값입니다. 프로젝트가 이미 다른 관례를 일관되게 쓰면 그 관례를 따릅니다.
 
 - 폴더: 공통은 `src/` 직하, 단일 사용처는 사용처 하위 `_components/_lib/_hooks/_stores/_types`
-- 파일명: 컴포넌트 PascalCase, 일반·훅 camelCase, 상수 파일·상수명 UPPER_SNAKE_CASE
+- 파일명: 컴포넌트 PascalCase, 일반·훅·상수 파일 camelCase. 상수명만 UPPER_SNAKE_CASE (예: `future.ts` 안에 `export const FUTURE_SKEW_MS = 5_000`)
 - import 별칭 `@/*` → `src/*` (tsconfig에 있을 때)
 - 테스트는 같은 폴더의 `__tests__/*.test.ts(x)`
+- 주석은 최대 2줄, 함수 본문·객체 리터럴 안에는 쓰지 않음, 코드로 알 수 있는 내용은 쓰지 않음 (모든 프로젝트)
 - Tailwind 정규형 클래스, 테마 토큰 유틸리티 우선 (**Tailwind를 쓸 때만**)
 
 기본값을 바꾸려면 `skills/sync/references/conventions.md`를 고칩니다.

@@ -10,7 +10,7 @@
 
 ```markdown
 - 폴더: 공통은 `src/` 직하, 단일 사용처는 사용처 하위 `_components/_lib/_hooks/_stores/_types`.
-- 파일명: 컴포넌트 PascalCase, 일반·훅 camelCase, 상수 파일·상수명 UPPER_SNAKE_CASE.
+- 파일명: 컴포넌트 PascalCase, 일반·훅·상수 파일 camelCase. 상수명만 UPPER_SNAKE_CASE (예: `future.ts` 안에 `export const FUTURE_SKEW_MS = 5_000`).
 - import 별칭 `@/*` → `src/*`.
 - 테스트는 같은 폴더의 `__tests__/*.test.ts(x)`.
 ```
@@ -23,6 +23,19 @@
 | 파일명 | `naming.kebabFiles`가 `componentsPascal`보다 확연히 많으면 프로젝트가 kebab-case를 쓰는 것이다. 그 관례를 적는다. Next.js의 `page.tsx`·`layout.tsx`·`route.ts` 같은 예약 파일명은 예외라고 한 줄 덧붙인다. |
 | import 별칭 | `stack.aliases`에 있는 별칭을 그대로 적는다. 별칭이 없으면 규칙을 넣지 않는다. 사용자가 원하면 tsconfig에 추가할 것을 제안만 한다. |
 | 테스트 | `tests.total`이 0이면 기본값을 적는다. 테스트가 있는데 `colocated`나 `topLevel`이 `inTestsFolder`보다 확연히 많으면 실제 배치를 적는다. |
+
+## 주석 (모든 프로젝트)
+
+조건: 없음. 언어와 상관없이 넣는다.
+
+```markdown
+- 주석은 최대 2줄로 짧게 쓴다. 코드 동작을 풀어 설명하는 주석은 쓰지 않는다.
+- 함수 본문과 객체 리터럴 안에는 주석을 쓰지 않는다. 필요하면 선언 위에 둔다.
+- 코드를 읽어서 알 수 있는 내용은 주석으로 쓰지 않는다. 코드만으로 알 수 없는 이유·제약만 남긴다.
+```
+
+- 프로젝트가 JSDoc·docstring으로 API 문서를 생성하고 있으면(`typedoc`, `sphinx` 등 설정이 있으면) 공개 API의 문서 주석은 이 규칙에서 예외라고 한 줄 덧붙인다.
+- 기존 코드의 주석을 이 규칙에 맞춰 지우지 않는다. 새로 쓰거나 고치는 코드에만 적용한다.
 
 ## Tailwind
 
