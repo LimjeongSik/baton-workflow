@@ -19,7 +19,7 @@ review와 ui가 쓰는 외부 마켓플레이스를 먼저 등록한 뒤, 묶음
 /plugin install all@baton
 ```
 
-`all`은 자체 기능 없이, 아래 플러그인 9개와 그 의존성(`codex`, `frontend-design`)을 한 번에 설치합니다.
+`all`은 자체 기능 없이, 아래 플러그인 10개와 그 의존성(`codex`, `frontend-design`)을 한 번에 설치합니다.
 
 ### 골라서 설치
 
@@ -90,6 +90,7 @@ Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace Limje
 | 반영 | [git](plugins/git) | `/git:ship` | 테스트·감사·리뷰를 거쳐 변경을 나눠 커밋하고 푸시 |
 | 기록 | [progress](plugins/progress) | `/progress:update` | 다음 세션이 읽을 진행 문서를 짧게 유지 |
 | 기록 | [context](plugins/context) | `/context:sync` | 루트 CLAUDE.md는 짧게, 폴더별 규칙은 하위 CLAUDE.md로 나눠 관리 |
+| 기록 | [prefs](plugins/prefs) | `/prefs:learn` | 사용자가 고르거나 고쳐 준 방식을 기록해 다음 작업부터 그 방식으로 진행 |
 
 슬래시 명령 대신 "기능 만들어줘", "테스트 작성해줘", "커밋하고 푸시해줘"처럼 말해도 됩니다.
 
@@ -117,6 +118,7 @@ Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace Limje
 - **review:** 지적마다 코드를 확인해서 반영할 것과 기각할 것을 나누고, 근거를 표로 남깁니다.
 - **progress:** `docs/PROGRESS.md`에 날짜별로 그날의 최종 상태만 남기고 최근 7일치만 둡니다. 세션을 시작할 때 문서보다 새 커밋이 있으면 알려줍니다.
 - **context:** 루트 CLAUDE.md에는 명령, 파일 컨벤션, 하위 문서 목록만 둡니다. 컨벤션은 프로젝트의 기존 관례를 우선하고, Tailwind 규칙은 Tailwind를 쓸 때만 넣습니다. 한 번 실행해 두면 이후로는 CLAUDE.md에 적힌 규칙대로 Claude가 문서를 맞춥니다.
+- **prefs:** 목업에서 고른 방향, "에러는 인라인으로" 같은 수정 요청, 거절한 리팩터링 후보처럼 사용자가 실제로 보여준 방식만 `docs/PREFERENCES.md`에 지시문으로 적습니다. 한 번 고른 것은 `[관찰]`, "앞으로는"이라고 했거나 두 번 이상 고른 것은 `[확정]`으로 두고, `[확정]`은 다음부터 묻지 않고 따릅니다. 세션을 시작할 때 문서 내용이 자동으로 들어가고, 80줄 안으로 유지합니다. 모든 코드가 지켜야 하는 규칙(파일명, 폴더 구조)은 여기가 아니라 CLAUDE.md에 둡니다.
 
 ### 함께 설치하면
 
@@ -124,6 +126,7 @@ Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace Limje
 
 - git은 test, security, review가 있으면 그 단계를 커밋 조건으로 씁니다.
 - feature와 refactor는 화면이 바뀌는 작업을 ui로 먼저 디자인하고, 끝나면 progress로 기록합니다. 새 도메인 폴더를 만들었으면 context로 하위 CLAUDE.md를 추가합니다.
+- ui, feature, refactor, test, git은 시작할 때 `docs/PREFERENCES.md`가 있으면 읽고 따르며, 작업 중 사용자가 고르거나 고친 것이 있으면 끝날 때 prefs로 기록합니다.
 
 ## 필요한 것
 

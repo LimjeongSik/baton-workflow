@@ -1,0 +1,17 @@
+{
+  "description": "세션 시작 시 선호 문서가 있으면 그 내용을 컨텍스트로 넣는다 (차단하지 않음)",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/session-load.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
