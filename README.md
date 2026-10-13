@@ -63,9 +63,22 @@ Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace Limje
 
 ### 업데이트
 
+먼저 마켓플레이스 목록을 새로 받습니다. 이 명령은 목록만 갱신하고, 이미 설치한 플러그인의 버전은 바꾸지 않습니다.
+
 ```
 /plugin marketplace update baton
 ```
+
+그다음 설치한 플러그인을 하나씩 업데이트합니다. `/plugin`에서 플러그인을 골라 업데이트하거나, 터미널에서 실행합니다.
+
+```
+claude plugin update ui@baton
+claude plugin update feature@baton -s project
+```
+
+user 범위가 아닌 곳(project, local)에 설치했다면 `-s`로 그 범위를 지정해야 업데이트됩니다. 업데이트한 뒤에는 Claude Code를 재시작하거나 `/reload-plugins`를 실행해야 새 버전이 적용됩니다.
+
+새로 추가된 플러그인(예: `prefs`)은 `/plugin install prefs@baton`으로 설치합니다. `all`로 설치했다면 `all`을 업데이트한 뒤 `/plugin`에서 새 플러그인이 설치됐는지 확인하고, 없으면 같은 명령으로 설치하세요.
 
 저장소와 마켓플레이스 이름이 `my-tools-plugins` / `my-tools`에서 `baton-workflow` / `baton`으로 바뀌었습니다. `@my-tools`로 설치했다면 `/plugin marketplace remove my-tools`로 지운 뒤 위의 설치 명령으로 다시 설치하세요.
 
