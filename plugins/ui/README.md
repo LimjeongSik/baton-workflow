@@ -37,4 +37,4 @@
 
 Playwright(프로젝트 설치본 → 최신 버전) → 로컬 Chrome 계열 브라우저 순으로 찾습니다. 처음 실행할 때 Playwright 헤드리스 브라우저를 내려받을 수 있습니다.
 
-목업은 `<저장소>/.design/mockups/`에 저장됩니다. 커밋하지 않으려면 `.gitignore`에 추가하세요.
+만든 이미지는 모두 프로젝트 루트의 `.design/` 폴더에 저장됩니다. 목업은 `.design/mockups/`, 구현 후 스크린샷은 `.design/screenshots/`에 들어가며, 승인을 받을 때와 보고할 때 이 폴더를 열어 확인하라고 안내합니다. 커밋하지 않으려면 `.design/`을 `.gitignore`에 추가하세요.
