@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="설계, 구현, 정리, 검증, 반영, 기록으로 이어지는 작업 흐름과 각 단계를 맡는 플러그인" width="100%">
+  <img src="assets/banner.svg" alt="준비, 설계, 구현, 정리, 검증, 반영, 기록으로 이어지는 작업 흐름과 각 단계를 맡는 플러그인" width="100%">
 </p>
 
 Claude Code에 매번 같은 지시를 반복하지 않도록, 자주 쓰는 작업 절차를 플러그인으로 묶었습니다. 플러그인마다 작업 흐름의 한 단계를 맡으며, 필요한 것만 골라 설치하면 됩니다.
@@ -32,11 +32,15 @@ Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace Limje
 
 ### 설치한 뒤
 
-위의 전부 설치를 마친 뒤, 작업할 프로젝트에서 `/context:sync`를 한 번 실행해 루트 CLAUDE.md에 규칙을 추가해 두면 좋습니다. 그 프로젝트의 실제 명령, 파일 컨벤션, 하위 CLAUDE.md 목록이 정리되고, 이후 Claude는 매 세션 이 규칙대로 작업합니다.
+작업할 프로젝트에서 아래 명령을 한 번씩 실행해 두면, 이후 세션은 그 결과를 기준으로 작업합니다.
 
-```
-/context:sync
-```
+| 명령 | 하는 일 |
+|---|---|
+| `/context:sync` | 루트 CLAUDE.md에 그 프로젝트의 실제 명령, 파일 컨벤션, 하위 CLAUDE.md 목록을 정리 |
+| `/biome:setup` | Biome을 설치하고 프로젝트 종류(Next, React Native, Expo 등)에 맞춘 `biome.json`과 `.vscode` 설정을 만듦 |
+
+<details>
+<summary><code>/context:sync</code>가 CLAUDE.md에 넣는 내용</summary>
 
 실행하면 루트 CLAUDE.md에 아래 내용이 들어갑니다. 루트는 60줄 안으로 유지합니다.
 
@@ -61,33 +65,48 @@ Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace Limje
 
 하위 CLAUDE.md는 다른 폴더가 기대는 계약, 그 폴더 전용 패턴, 틀리기 쉬운 전제(단위, 시간대, 서버·클라이언트 경계)가 있는 폴더에만 만듭니다. 단순 컴포넌트 모음에는 만들지 않습니다. 자세한 내용은 [context](plugins/context)에 있습니다.
 
-### 업데이트
+</details>
 
-먼저 마켓플레이스 목록을 새로 받습니다. 이 명령은 목록만 갱신하고, 이미 설치한 플러그인의 버전은 바꾸지 않습니다.
+## 업데이트
+
+> [!TIP]
+> **새 플러그인: biome** · Biome을 설치하고 프로젝트 종류에 맞춘 `biome.json`과 저장 시 포맷·import 정리용 `.vscode` 설정을 만듭니다.
+>
+> ```
+> /plugin marketplace update baton
+> /plugin install biome@baton
+> ```
+>
+> 설치한 뒤 적용할 프로젝트에서 `/biome:setup`을 실행합니다. `all`로 설치했다면 `all`을 0.3.0으로 업데이트한 뒤 `/plugin`에서 biome이 설치됐는지 확인하세요.
+
+### 순서
+
+**1. 마켓플레이스 목록 갱신**: 목록만 새로 받습니다. 이미 설치한 플러그인의 버전은 바뀌지 않습니다.
 
 ```
 /plugin marketplace update baton
 ```
 
-그다음 설치한 플러그인을 하나씩 업데이트합니다. `/plugin`에서 플러그인을 골라 업데이트하거나, 터미널에서 실행합니다.
+**2. 플러그인 업데이트**: `/plugin`에서 플러그인을 골라 업데이트하거나, 터미널에서 실행합니다. user 범위가 아닌 곳(project, local)에 설치했다면 `-s`로 범위를 지정해야 합니다.
 
 ```
 claude plugin update ui@baton
 claude plugin update feature@baton -s project
 ```
 
-user 범위가 아닌 곳(project, local)에 설치했다면 `-s`로 그 범위를 지정해야 업데이트됩니다. 업데이트한 뒤에는 Claude Code를 재시작하거나 `/reload-plugins`를 실행해야 새 버전이 적용됩니다.
+**3. 적용**: Claude Code를 재시작하거나 `/reload-plugins`를 실행해야 새 버전이 적용됩니다.
 
-새로 추가된 플러그인(예: `prefs`)은 `/plugin install prefs@baton`으로 설치합니다. `all`로 설치했다면 `all`을 업데이트한 뒤 `/plugin`에서 새 플러그인이 설치됐는지 확인하고, 없으면 같은 명령으로 설치하세요.
+### 새로 추가된 플러그인
 
-`biome`도 새로 추가되었습니다. 마켓플레이스를 갱신한 뒤 설치하고, `/reload-plugins`를 실행합니다. `all`로 설치했다면 `all`을 0.3.0으로 업데이트한 뒤 `/plugin`에서 biome이 설치됐는지 확인하세요.
+업데이트만으로는 새 플러그인이 설치되지 않습니다. 아래 명령으로 따로 설치하세요. `all`로 설치했다면 `all`을 업데이트한 뒤 `/plugin`에서 설치됐는지 확인하고, 없으면 같은 명령으로 설치합니다.
 
-```
-/plugin marketplace update baton
-/plugin install biome@baton
-```
+| 플러그인 | 설치 | 처음 실행 |
+|---|---|---|
+| [biome](plugins/biome) | `/plugin install biome@baton` | `/biome:setup` |
+| [prefs](plugins/prefs) | `/plugin install prefs@baton` | 자동 (세션 시작 시 `docs/PREFERENCES.md`를 읽음) |
 
-설치한 뒤 Biome을 적용할 프로젝트에서 `/biome:setup`을 실행하면 Biome 설치, `biome.json`, `.vscode/settings.json`·`extensions.json` 생성까지 진행합니다.
+<details>
+<summary>예전 이름(<code>my-tools</code>, <code>codex-triage</code> 등)으로 설치했다면</summary>
 
 저장소와 마켓플레이스 이름이 `my-tools-plugins` / `my-tools`에서 `baton-workflow` / `baton`으로 바뀌었습니다. `@my-tools`로 설치했다면 `/plugin marketplace remove my-tools`로 지운 뒤 위의 설치 명령으로 다시 설치하세요.
 
@@ -99,10 +118,13 @@ user 범위가 아닌 곳(project, local)에 설치했다면 `-s`로 그 범위�
 | `codex-triage` (`/codex-triage:review-apply`) | `review` (`/review:codex`) |
 | `git-workflow` (`/git-workflow:commit-push`) | `git` (`/git:ship`) |
 
+</details>
+
 ## 플러그인
 
 | 단계 | 플러그인 | 명령 | 하는 일 |
 |---|---|---|---|
+| 준비 | [biome](plugins/biome) | `/biome:setup` | Biome을 설치하고 프로젝트 종류에 맞춘 `biome.json`과 `.vscode` 설정을 만듦 |
 | 설계 | [ui](plugins/ui) | `/ui:design` | 화면을 디자인하고, 목업 이미지로 승인받은 뒤 구현 |
 | 구현 | [feature](plugins/feature) | `/feature:build` | 기능 구현과 테스트 작성을 서로 다른 에이전트에게 맡김 |
 | 정리 | [refactor](plugins/refactor) | `/refactor:sweep` | 리팩터링할 곳을 찾아 동작을 바꾸지 않고 고침 |
@@ -112,7 +134,6 @@ user 범위가 아닌 곳(project, local)에 설치했다면 `-s`로 그 범위�
 | 반영 | [git](plugins/git) | `/git:ship` | 테스트·감사·리뷰를 거쳐 변경을 나눠 커밋하고 푸시 |
 | 기록 | [progress](plugins/progress) | `/progress:update` | 다음 세션이 읽을 진행 문서를 짧게 유지 |
 | 기록 | [context](plugins/context) | `/context:sync` | 루트 CLAUDE.md는 짧게, 폴더별 규칙은 하위 CLAUDE.md로 나눠 관리 |
-| 설정 | [biome](plugins/biome) | `/biome:setup` | Biome을 설치하고 프로젝트 종류에 맞춘 biome.json과 `.vscode` 설정을 만듦 |
 | 기록 | [prefs](plugins/prefs) | `/prefs:learn` | 사용자가 고르거나 고쳐 준 방식을 기록해 다음 작업부터 그 방식으로 진행 |
 
 슬래시 명령 대신 "기능 만들어줘", "테스트 작성해줘", "커밋하고 푸시해줘"처럼 말해도 됩니다.
@@ -141,6 +162,7 @@ user 범위가 아닌 곳(project, local)에 설치했다면 `-s`로 그 범위�
 - **review:** 지적마다 코드를 확인해서 반영할 것과 기각할 것을 나누고, 근거를 표로 남깁니다.
 - **progress:** `docs/PROGRESS.md`에 날짜별로 그날의 최종 상태만 남기고 최근 7일치만 둡니다. 세션을 시작할 때 문서보다 새 커밋이 있으면 알려줍니다.
 - **context:** 루트 CLAUDE.md에는 명령, 파일 컨벤션, 하위 문서 목록만 둡니다. 컨벤션은 프로젝트의 기존 관례를 우선하고, Tailwind 규칙은 Tailwind를 쓸 때만 넣습니다. 한 번 실행해 두면 이후로는 CLAUDE.md에 적힌 규칙대로 Claude가 문서를 맞춥니다.
+- **biome:** 같은 기본 컨벤션(들여쓰기 4칸, 줄 길이 100, import 그룹 정렬)을 쓰되, Next·React Native·Expo 등 프로젝트 종류에 맞춰 제외 폴더, 린트 domain, DOM 전용 규칙, import 첫 그룹을 바꿉니다. 기존 `biome.json`, ESLint·Prettier 설정, `lint` 스크립트는 묻지 않고 바꾸지 않습니다.
 - **prefs:** 목업에서 고른 방향, "에러는 인라인으로" 같은 수정 요청, 거절한 리팩터링 후보를 `docs/PREFERENCES.md`에 지시문으로 적습니다. 사용자가 말하지 않아도 Claude가 만든 코드를 매번 같은 방향으로 직접 고치는 식으로 행동에서 방식이 드러나면, Claude가 스스로 판단해 `[추정]`으로 적습니다. 한 번 고른 것은 `[관찰]`, "앞으로는"이라고 했거나 두 번 이상 고른 것은 `[확정]`으로 두고, `[확정]`은 다음부터 묻지 않고 따릅니다. `[추정]`은 다른 근거가 없을 때만 따르고 따랐다고 보고에 밝히며, 한 번이라도 어긋나면 지웁니다. 세션을 시작할 때 문서 내용이 자동으로 들어가고, 80줄 안으로 유지합니다. 모든 코드가 지켜야 하는 규칙(파일명, 폴더 구조)은 여기가 아니라 CLAUDE.md에 둡니다.
 
 ### 함께 설치하면
