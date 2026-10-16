@@ -13,7 +13,7 @@
       "name": "all",
       "source": "./plugins/all",
       "description": "baton의 모든 플러그인을 한 번에 설치하는 묶음",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "category": "productivity",
       "keywords": [
         "bundle"
@@ -137,6 +137,19 @@
         "preferences",
         "personalization",
         "docs"
+      ]
+    },
+    {
+      "name": "biome",
+      "source": "./plugins/biome",
+      "description": "Biome을 설치하고 프로젝트 종류(Next, React, React Native, Expo 등)에 맞춘 biome.json과 저장 시 포맷·import 정리용 .vscode 설정을 만듦",
+      "version": "0.1.0",
+      "category": "development",
+      "keywords": [
+        "biome",
+        "lint",
+        "format",
+        "vscode"
       ]
     }
   ],

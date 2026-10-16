@@ -19,7 +19,7 @@ review와 ui가 쓰는 외부 마켓플레이스를 먼저 등록한 뒤, 묶음
 /plugin install all@baton
 ```
 
-`all`은 자체 기능 없이, 아래 플러그인 10개와 그 의존성(`codex`, `frontend-design`)을 한 번에 설치합니다.
+`all`은 자체 기능 없이, 아래 플러그인 11개와 그 의존성(`codex`, `frontend-design`)을 한 번에 설치합니다.
 
 ### 골라서 설치
 
@@ -103,6 +103,7 @@ user 범위가 아닌 곳(project, local)에 설치했다면 `-s`로 그 범위�
 | 반영 | [git](plugins/git) | `/git:ship` | 테스트·감사·리뷰를 거쳐 변경을 나눠 커밋하고 푸시 |
 | 기록 | [progress](plugins/progress) | `/progress:update` | 다음 세션이 읽을 진행 문서를 짧게 유지 |
 | 기록 | [context](plugins/context) | `/context:sync` | 루트 CLAUDE.md는 짧게, 폴더별 규칙은 하위 CLAUDE.md로 나눠 관리 |
+| 설정 | [biome](plugins/biome) | `/biome:setup` | Biome을 설치하고 프로젝트 종류에 맞춘 biome.json과 `.vscode` 설정을 만듦 |
 | 기록 | [prefs](plugins/prefs) | `/prefs:learn` | 사용자가 고르거나 고쳐 준 방식을 기록해 다음 작업부터 그 방식으로 진행 |
 
 슬래시 명령 대신 "기능 만들어줘", "테스트 작성해줘", "커밋하고 푸시해줘"처럼 말해도 됩니다.
