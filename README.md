@@ -80,6 +80,15 @@ user 범위가 아닌 곳(project, local)에 설치했다면 `-s`로 그 범위�
 
 새로 추가된 플러그인(예: `prefs`)은 `/plugin install prefs@baton`으로 설치합니다. `all`로 설치했다면 `all`을 업데이트한 뒤 `/plugin`에서 새 플러그인이 설치됐는지 확인하고, 없으면 같은 명령으로 설치하세요.
 
+`biome`도 새로 추가되었습니다. 마켓플레이스를 갱신한 뒤 설치하고, `/reload-plugins`를 실행합니다. `all`로 설치했다면 `all`을 0.3.0으로 업데이트한 뒤 `/plugin`에서 biome이 설치됐는지 확인하세요.
+
+```
+/plugin marketplace update baton
+/plugin install biome@baton
+```
+
+설치한 뒤 Biome을 적용할 프로젝트에서 `/biome:setup`을 실행하면 Biome 설치, `biome.json`, `.vscode/settings.json`·`extensions.json` 생성까지 진행합니다.
+
 저장소와 마켓플레이스 이름이 `my-tools-plugins` / `my-tools`에서 `baton-workflow` / `baton`으로 바뀌었습니다. `@my-tools`로 설치했다면 `/plugin marketplace remove my-tools`로 지운 뒤 위의 설치 명령으로 다시 설치하세요.
 
 플러그인 이름도 바뀌었습니다. 예전 이름으로 설치했다면 지우고 새 이름으로 다시 설치하세요. 리뷰 게이트 환경 변수도 `CODEX_TRIAGE_GATE*`에서 `REVIEW_GATE*`로 바뀌었습니다.
