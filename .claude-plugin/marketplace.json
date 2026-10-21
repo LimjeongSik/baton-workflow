@@ -13,7 +13,7 @@
       "name": "all",
       "source": "./plugins/all",
       "description": "baton의 모든 플러그인을 한 번에 설치하는 묶음",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "category": "productivity",
       "keywords": [
         "bundle"
@@ -150,6 +150,17 @@
         "lint",
         "format",
         "vscode"
+      ]
+    },
+    {
+      "name": "baton",
+      "source": "./plugins/baton",
+      "description": "설치된 baton 플러그인을 범위와 프로젝트에 상관없이 한 번에 업데이트",
+      "version": "0.1.0",
+      "category": "productivity",
+      "keywords": [
+        "update",
+        "maintenance"
       ]
     }
   ],

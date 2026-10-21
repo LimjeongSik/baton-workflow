@@ -19,7 +19,7 @@ review와 ui가 쓰는 외부 마켓플레이스를 먼저 등록한 뒤, 묶음
 /plugin install all@baton
 ```
 
-`all`은 자체 기능 없이, 아래 플러그인 11개와 그 의존성(`codex`, `frontend-design`)을 한 번에 설치합니다.
+`all`은 자체 기능 없이, 아래 플러그인 12개와 그 의존성(`codex`, `frontend-design`)을 한 번에 설치합니다.
 
 ### 골라서 설치
 
@@ -70,6 +70,13 @@ Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace Limje
 ## 업데이트
 
 > [!TIP]
+> **새 플러그인: baton** · `/baton:update` 하나로 설치된 baton 플러그인을 범위·프로젝트에 상관없이 모두 업데이트합니다. 처음 한 번만 설치하세요.
+>
+> ```
+> /plugin marketplace update baton
+> /plugin install baton@baton
+> ```
+>
 > **새 플러그인: biome** · Biome을 설치하고 프로젝트 종류에 맞춘 `biome.json`과 저장 시 포맷·import 정리용 `.vscode` 설정을 만듭니다.
 >
 > ```
@@ -78,6 +85,22 @@ Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace Limje
 > ```
 >
 > 설치한 뒤 적용할 프로젝트에서 `/biome:setup`을 실행합니다. `all`로 설치했다면 `all`을 0.3.0으로 업데이트한 뒤 `/plugin`에서 biome이 설치됐는지 확인하세요.
+
+### 한 번에 업데이트
+
+`/baton:update` 하나로 마켓플레이스 목록을 갱신하고, 설치된 baton 플러그인을 범위(user·project·local)와 프로젝트에 상관없이 모두 업데이트합니다. 끝나면 `/reload-plugins`를 실행하거나 재시작합니다.
+
+```
+/baton:update
+```
+
+- baton 플러그인이 없으면 먼저 `/plugin install baton@baton`으로 설치합니다. `all`을 0.4.0으로 업데이트해도 함께 설치됩니다.
+- `/baton:update --dry-run`은 실행할 명령만 보여 줍니다.
+- 터미널에서는 `node ~/.claude/plugins/marketplaces/baton/plugins/baton/scripts/update.mjs`로 같은 일을 합니다.
+- 설치했던 프로젝트 폴더를 옮겼거나 지웠으면 그 설치는 건너뛰고 목록으로 알려 줍니다.
+- 플러그인을 user 범위로 설치해 두면 프로젝트마다 따로 업데이트할 일이 없습니다.
+
+직접 하려면 아래 순서를 따릅니다.
 
 ### 순서
 
@@ -103,6 +126,7 @@ claude plugin update feature@baton -s project
 | 플러그인 | 버전 | 바뀐 점 | 업데이트 |
 |---|---|---|---|
 | [prefs](plugins/prefs) | 0.3.0 | 시키지도 묻지도 않고 Claude가 요청과 행동에서 작업 방식을 스스로 학습합니다. 신호는 근거 로그에 쌓고, 여러 작업에서 같은 방향이 확인된 것만 `~/.claude/prefs/profile.md`에 지시문으로 올려 `~/.claude/CLAUDE.md`로 모든 프로젝트에 적용합니다. 프로젝트의 `docs/PREFERENCES.md`는 처음 학습할 때 프로필로 옮깁니다 | `claude plugin update prefs@baton` |
+| [all](plugins/all) | 0.4.0 | baton 플러그인을 함께 설치합니다 | `claude plugin update all@baton` |
 | ui, feature, refactor, test, git, biome | 0.1.5 · 0.1.3 · 0.1.3 · 0.1.3 · 0.3.3 · 0.1.1 | `docs/PREFERENCES.md` 대신 prefs가 학습한 프로필을 따릅니다 | `claude plugin update <이름>@baton` |
 | [ui](plugins/ui) | 0.1.4 | 텍스트 스타일마다 자간·행간을 정하고 목업에서 보고 조정합니다. 번역투·섞인 말투·노출된 "을(를)" 같은 어색한 한국어 카피를 걸러냅니다 | `claude plugin update ui@baton` |
 
@@ -114,6 +138,7 @@ claude plugin update feature@baton -s project
 |---|---|---|
 | [biome](plugins/biome) | `/plugin install biome@baton` | `/biome:setup` |
 | [prefs](plugins/prefs) | `/plugin install prefs@baton` | 자동 (학습한 프로필을 `~/.claude/CLAUDE.md`로 불러옴) |
+| [baton](plugins/baton) | `/plugin install baton@baton` | `/baton:update` |
 
 <details>
 <summary>예전 이름(<code>my-tools</code>, <code>codex-triage</code> 등)으로 설치했다면</summary>
@@ -144,6 +169,7 @@ claude plugin update feature@baton -s project
 | 반영 | [git](plugins/git) | `/git:ship` | 테스트·감사·리뷰를 거쳐 변경을 나눠 커밋하고 푸시 |
 | 기록 | [progress](plugins/progress) | `/progress:update` | 다음 세션이 읽을 진행 문서를 짧게 유지 |
 | 기록 | [context](plugins/context) | `/context:sync` | 루트 CLAUDE.md는 짧게, 폴더별 규칙은 하위 CLAUDE.md로 나눠 관리 |
+| 관리 | [baton](plugins/baton) | `/baton:update` | 설치된 baton 플러그인을 범위·프로젝트에 상관없이 한 번에 업데이트 |
 | 기록 | [prefs](plugins/prefs) | 자동 | 사용자의 요청과 행동에서 작업 방식을 스스로 학습해 다음 작업부터 모든 프로젝트에 적용 |
 
 슬래시 명령 대신 "기능 만들어줘", "테스트 작성해줘", "커밋하고 푸시해줘"처럼 말해도 됩니다.
