@@ -1,7 +1,7 @@
 {
   "name": "prefs",
-  "version": "0.2.0",
-  "description": "사용자가 고르거나 고쳐 준 작업 방식을 docs/PREFERENCES.md에 쌓아 두고, 다음 작업부터 그 방식에 맞춰 진행",
+  "version": "0.3.0",
+  "description": "사용자의 요청과 행동에서 작업 방식을 스스로 학습해, 패턴이 선 것만 지시문 프로필로 만들어 ~/.claude/CLAUDE.md로 모든 프로젝트에 적용",
   "author": {
     "name": "LimjeongSik",
     "url": "https://github.com/LimjeongSik"

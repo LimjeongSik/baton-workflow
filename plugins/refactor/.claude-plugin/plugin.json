@@ -1,6 +1,6 @@
 {
   "name": "refactor",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "정찰 → 판별 → 실행 3단계로 동작을 그대로 둔 채 리팩터링하는 워크플로우",
   "author": {
     "name": "LimjeongSik",
