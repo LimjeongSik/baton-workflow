@@ -125,7 +125,7 @@ claude plugin update feature@baton -s project
 
 | 플러그인 | 버전 | 바뀐 점 | 업데이트 |
 |---|---|---|---|
-| [prefs](plugins/prefs) | 0.4.0 | 학습 결과를 전역(`~/.claude`)이 아니라 **Claude를 실행한 폴더의 `learn/`** 에 둡니다. 관찰한 신호는 `learn/observed.md`, 학습한 지시문은 `learn/learned.md`이고, `learn/`이 없으면 세션을 시작할 때 만듭니다. 모노레포에서 `frontend/`에서 실행하면 `frontend/learn/`을 씁니다. 프로젝트마다 선호 기술·패턴이 다르므로 다른 프로젝트의 학습은 참고하지 않습니다. 0.3.0이 `~/.claude/prefs/`에 남긴 신호는 처음 학습할 때 그 프로젝트 줄만 옮기고, 다 옮기면 전역 파일과 `~/.claude/CLAUDE.md`의 불러오기 블록을 지웁니다 | `claude plugin update prefs@baton` |
+| [prefs](plugins/prefs) | 0.4.1 | 학습 결과를 전역(`~/.claude`)이 아니라 **Claude를 실행한 폴더의 `learn/`** 에 둡니다. 관찰한 신호는 `learn/observed.md`, 학습한 지시문은 `learn/learned.md`이고, `learn/`이 없으면 세션을 시작할 때 만들고 `.gitignore`에 넣습니다. 모노레포에서 `frontend/`에서 실행하면 `frontend/learn/`을 씁니다. 프로젝트마다 선호 기술·패턴이 다르므로 다른 프로젝트의 학습은 참고하지 않습니다. 0.3.0이 `~/.claude/prefs/`에 남긴 신호는 처음 학습할 때 그 프로젝트 줄만 옮기고, 다 옮기면 전역 파일과 `~/.claude/CLAUDE.md`의 불러오기 블록을 지웁니다 | `claude plugin update prefs@baton` |
 | ui, feature, refactor, test, git, biome | 0.1.6 · 0.1.4 · 0.1.4 · 0.1.4 · 0.3.4 · 0.1.2 | 프로젝트의 `learn/learned.md`에서 학습한 프로필을 따릅니다 | `claude plugin update <이름>@baton` |
 | [all](plugins/all) | 0.4.0 | baton 플러그인을 함께 설치합니다 | `claude plugin update all@baton` |
 | [ui](plugins/ui) | 0.1.4 | 텍스트 스타일마다 자간·행간을 정하고 목업에서 보고 조정합니다. 번역투·섞인 말투·노출된 "을(를)" 같은 어색한 한국어 카피를 걸러냅니다 | `claude plugin update ui@baton` |
@@ -204,7 +204,7 @@ claude plugin update feature@baton -s project
   - **학습:** 작업 방식·디자인 스타일·선호 기술·코드 패턴·글쓰기·피하는 것 중 하나에 들고 그 프로젝트의 다른 작업에서도 쓰일 신호만 `learn/observed.md`에 쌓고, 서로 다른 작업에서 같은 방향이 확인된 것만 일반화해 `learn/learned.md`에 지시문으로 올립니다. 한 번 나온 선택은 `observed.md`에만 남습니다.
   - **확정과 추정:** "앞으로는"이라고 했거나 직접 두 번 이상 고른 것은 `[확정]`(묻지 않고 따름), 행동에서 판단한 것은 `[추정]`(다른 근거가 없을 때만 따르고 보고에 밝힘)입니다. 학습한 대로 한 결과를 사용자가 고치면 그 항목을 고치거나 지웁니다.
   - **위치:** `learn/`은 Claude를 실행한 폴더에 있고, 없으면 세션을 시작할 때 빈 양식으로 만듭니다(git 저장소 안일 때만). 모노레포에서 `frontend/`에서 실행하면 `frontend/learn/`을 쓰고 최상위나 다른 폴더의 `learn/`은 참고하지 않습니다. 하위 폴더(`src/` 등)가 아니라 프로젝트 폴더에서 실행하세요.
-  - **공유:** 팀과 나누려면 `learn/`을 커밋하고, 혼자 쓰려면 `.gitignore`에 넣으세요.
+  - **git:** `learn/`을 새로 만들 때 그 폴더의 `.gitignore`에 `/learn/`을 넣어 커밋되지 않게 합니다. 팀과 나누려면 그 줄을 지우고 커밋하세요. 이미 있던 `learn/`은 건드리지 않습니다.
 
 ### 함께 설치하면
 

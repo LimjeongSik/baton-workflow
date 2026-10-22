@@ -63,6 +63,24 @@ describe("학습 안내 주입", () => {
         assert.match(context, /1px 테두리/);
     });
 
+    test("learn/을 만들 때 .gitignore에 /learn/을 넣고 한 번만 넣는다", () => {
+        const repo = makeDir({ ".gitignore": "node_modules" }, { git: true });
+        assert.match(run({ repo }), /\.gitignore에 \/learn\/을 넣었다/);
+        assert.equal(readFileSync(path.join(repo, ".gitignore"), "utf8"), "node_modules\n\n# prefs 플러그인 학습 파일\n/learn/\n");
+        rmSync(path.join(repo, "learn"), { recursive: true });
+        assert.doesNotMatch(run({ repo }), /\.gitignore에/);
+        assert.equal(readFileSync(path.join(repo, ".gitignore"), "utf8").match(/\/learn\//g).length, 1);
+    });
+
+    test(".gitignore가 없으면 만들고, 이미 있는 learn/은 .gitignore에 넣지 않는다", () => {
+        const repo = makeDir({}, { git: true });
+        run({ repo });
+        assert.equal(readFileSync(path.join(repo, ".gitignore"), "utf8"), "# prefs 플러그인 학습 파일\n/learn/\n");
+        const shared = makeDir({ "learn/learned.md": PROFILE }, { git: true });
+        run({ repo: shared });
+        assert.ok(!existsSync(path.join(shared, ".gitignore")));
+    });
+
     test("git 저장소가 아니면 learn/을 만들지 않는다", () => {
         const dir = makeDir();
         run({ repo: dir });

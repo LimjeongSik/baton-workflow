@@ -3,7 +3,8 @@
 //
 // 학습 결과는 프로젝트 루트의 learn/ 폴더에 둔다. 프로젝트마다 선호 기술·패턴이 달라서 전역(~/.claude)에는 두지도 읽지도 않는다.
 // 프로젝트 루트는 Claude를 실행한 폴더(cwd)다. 모노레포에서 frontend/에서 실행하면 frontend/learn/을 쓰고, 상위 폴더로 올라가지 않는다.
-// git 저장소 안인데 learn/이 없으면 templates/의 빈 양식(observed.md, learned.md)으로 만든다.
+// git 저장소 안인데 learn/이 없으면 templates/의 빈 양식(observed.md, learned.md)으로 만들고,
+// 아직 무시되지 않으면 실행한 폴더의 .gitignore에 /learn/을 넣는다. 이미 있는 learn/은 커밋하기로 한 것일 수 있어 건드리지 않는다.
 // learn/learned.md에 학습한 항목이 있으면 그 내용을 직접 넣는다.
 // 프로젝트에 옛 선호 문서(DOCS_PREFERENCES_PATH, 기본 docs/PREFERENCES.md)가 있으면 그 내용도 넣고 learn/으로 옮기라고 알린다.
 // 옛 전역 학습 파일(<설정 폴더>/prefs/)이 남아 있으면 따르지 말고 이 프로젝트 줄만 옮기라고 알린다.
@@ -11,7 +12,7 @@
 // 차단하지 않는다. 판단할 수 없으면 조용히 통과한다.
 
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
@@ -63,13 +64,32 @@ if (inGit && !existsSync(LEARN_DIR)) {
     } catch {}
 }
 
+let ignored = false;
+if (created) {
+    try {
+        execFileSync("git", ["check-ignore", "-q", "learn/learned.md"], { cwd: root, stdio: "ignore" });
+    } catch {
+        try {
+            const gitignore = path.join(root, ".gitignore");
+            const raw = existsSync(gitignore) ? readFileSync(gitignore, "utf8") : "";
+            const gap = raw === "" ? "" : raw.endsWith("\n") ? "\n" : "\n\n";
+            appendFileSync(gitignore, `${gap}# prefs 플러그인 학습 파일\n/learn/\n`);
+            ignored = true;
+        } catch {}
+    }
+}
+
 const FOLLOW = "[확정]은 묻지 않고 따르고, [추정]은 다른 근거가 없을 때만 따르고 따랐으면 보고에 밝힌다. 이번 요청이나 프로젝트 CLAUDE.md와 다르면 그쪽을 따른다.";
 const parts = [
     `Claude는 이 프로젝트에서 사용자의 작업 방식을 스스로 학습한다. 프로젝트 루트는 ${root}이고, 학습 결과는 그 아래 learn/ 폴더(관찰한 신호 observed.md, 학습한 지시문 learned.md)에만 두고, 다른 프로젝트나 전역(~/.claude)의 학습 내용은 참고하지 않는다. 사용자가 시키기를 기다리지 않고, "기억해 둘까요?", "메모해 둘까요?", "선호로 기록할까요?"처럼 묻지도 않는다. 기록할지는 Claude가 판단 근거로 정한다. 작업 중 사용자가 고르거나 고친 것, 거절한 것, 일반 지시, 사용자의 행동에서 드러난 방식, 프로필대로 한 결과를 사용자가 받아들였는지 고쳤는지를 지켜보고, 작업을 마칠 때 신호가 있었다고 판단하면 prefs:learn 스킬로 넘긴다. 신호는 근거일 뿐이고, 이 프로젝트의 여러 작업에서 같은 방향이 확인된 것만 프로필 지시문이 된다.`,
 ];
 
 const learned = read(LEARNED);
-if (created) parts.push("이 프로젝트에 learn/ 폴더가 없어 빈 양식(observed.md, learned.md)으로 만들었다.");
+if (created) {
+    parts.push(
+        `이 프로젝트에 learn/ 폴더가 없어 빈 양식(observed.md, learned.md)으로 만들었다.${ignored ? " .gitignore에 /learn/을 넣었다." : ""}`,
+    );
+}
 if (!/^- \[(확정|추정)\]/m.test(learned)) {
     parts.push("이 프로젝트에는 아직 학습한 지시문(learn/learned.md)이 없다. 신호가 쌓이면 recorder가 채운다.");
 } else {
