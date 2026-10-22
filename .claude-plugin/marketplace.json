@@ -35,7 +35,7 @@
       "name": "refactor",
       "source": "./plugins/refactor",
       "description": "정찰 → 판별 → 실행 3단계로 동작을 그대로 둔 채 리팩터링하는 워크플로우",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "category": "development",
       "keywords": [
         "refactor",
@@ -46,7 +46,7 @@
       "name": "feature",
       "source": "./plugins/feature",
       "description": "구현 → 테스트 → 검증을 역할별 서브에이전트로 나눠 진행하는 기능 개발 워크플로우",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "category": "development",
       "keywords": [
         "feature",
@@ -70,7 +70,7 @@
       "name": "git",
       "source": "./plugins/git",
       "description": "사전 검사 → 테스트 → 보안 감사 → 코드 리뷰를 거쳐 변경을 나눠 커밋하고 푸시하는 워크플로우",
-      "version": "0.3.3",
+      "version": "0.3.4",
       "category": "productivity",
       "keywords": [
         "git",
@@ -94,7 +94,7 @@
       "name": "ui",
       "source": "./plugins/ui",
       "description": "frontend-design 기반으로 레퍼런스를 반영하고, 분야(대시보드·앱·웹)에 맞추고, AI가 만든 티가 나지 않는 UI를 설계·구현",
-      "version": "0.1.5",
+      "version": "0.1.6",
       "category": "design",
       "keywords": [
         "design",
@@ -119,7 +119,7 @@
       "name": "test",
       "source": "./plugins/test",
       "description": "변경된 코드의 테스트를 폴더별 __tests__에 작성하고 실행. 러너가 없으면 설치 여부를 묻고 설치 후 진행",
-      "version": "0.1.3",
+      "version": "0.1.4",
       "category": "development",
       "keywords": [
         "test",
@@ -130,8 +130,8 @@
     {
       "name": "prefs",
       "source": "./plugins/prefs",
-      "description": "사용자의 요청과 행동에서 작업 방식을 스스로 학습해, 패턴이 선 것만 지시문 프로필로 만들어 ~/.claude/CLAUDE.md로 모든 프로젝트에 적용",
-      "version": "0.3.0",
+      "description": "사용자의 요청과 행동에서 작업 방식을 스스로 학습해, 패턴이 선 것만 프로젝트 루트 learn/ 폴더에 지시문 프로필로 만들어 그 프로젝트에만 적용",
+      "version": "0.4.0",
       "category": "productivity",
       "keywords": [
         "preferences",
@@ -143,7 +143,7 @@
       "name": "biome",
       "source": "./plugins/biome",
       "description": "Biome을 설치하고 프로젝트 종류(Next, React, React Native, Expo 등)에 맞춘 biome.json과 저장 시 포맷·import 정리용 .vscode 설정을 만듦",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "category": "development",
       "keywords": [
         "biome",

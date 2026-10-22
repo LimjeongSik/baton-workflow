@@ -1,7 +1,7 @@
 {
   "name": "prefs",
-  "version": "0.3.0",
-  "description": "사용자의 요청과 행동에서 작업 방식을 스스로 학습해, 패턴이 선 것만 지시문 프로필로 만들어 ~/.claude/CLAUDE.md로 모든 프로젝트에 적용",
+  "version": "0.4.0",
+  "description": "사용자의 요청과 행동에서 작업 방식을 스스로 학습해, 패턴이 선 것만 프로젝트 루트 learn/ 폴더에 지시문 프로필로 만들어 그 프로젝트에만 적용",
   "author": {
     "name": "LimjeongSik",
     "url": "https://github.com/LimjeongSik"

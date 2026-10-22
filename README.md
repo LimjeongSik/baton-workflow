@@ -125,9 +125,9 @@ claude plugin update feature@baton -s project
 
 | 플러그인 | 버전 | 바뀐 점 | 업데이트 |
 |---|---|---|---|
-| [prefs](plugins/prefs) | 0.3.0 | 시키지도 묻지도 않고 Claude가 요청과 행동에서 작업 방식을 스스로 학습합니다. 신호는 근거 로그에 쌓고, 여러 작업에서 같은 방향이 확인된 것만 `~/.claude/prefs/profile.md`에 지시문으로 올려 `~/.claude/CLAUDE.md`로 모든 프로젝트에 적용합니다. 프로젝트의 `docs/PREFERENCES.md`는 처음 학습할 때 프로필로 옮깁니다 | `claude plugin update prefs@baton` |
+| [prefs](plugins/prefs) | 0.4.0 | 학습 결과를 전역(`~/.claude`)이 아니라 **Claude를 실행한 폴더의 `learn/`** 에 둡니다. 관찰한 신호는 `learn/observed.md`, 학습한 지시문은 `learn/learned.md`이고, `learn/`이 없으면 세션을 시작할 때 만듭니다. 모노레포에서 `frontend/`에서 실행하면 `frontend/learn/`을 씁니다. 프로젝트마다 선호 기술·패턴이 다르므로 다른 프로젝트의 학습은 참고하지 않습니다. 0.3.0이 `~/.claude/prefs/`에 남긴 신호는 처음 학습할 때 그 프로젝트 줄만 옮기고, 다 옮기면 전역 파일과 `~/.claude/CLAUDE.md`의 불러오기 블록을 지웁니다 | `claude plugin update prefs@baton` |
+| ui, feature, refactor, test, git, biome | 0.1.6 · 0.1.4 · 0.1.4 · 0.1.4 · 0.3.4 · 0.1.2 | 프로젝트의 `learn/learned.md`에서 학습한 프로필을 따릅니다 | `claude plugin update <이름>@baton` |
 | [all](plugins/all) | 0.4.0 | baton 플러그인을 함께 설치합니다 | `claude plugin update all@baton` |
-| ui, feature, refactor, test, git, biome | 0.1.5 · 0.1.3 · 0.1.3 · 0.1.3 · 0.3.3 · 0.1.1 | `docs/PREFERENCES.md` 대신 prefs가 학습한 프로필을 따릅니다 | `claude plugin update <이름>@baton` |
 | [ui](plugins/ui) | 0.1.4 | 텍스트 스타일마다 자간·행간을 정하고 목업에서 보고 조정합니다. 번역투·섞인 말투·노출된 "을(를)" 같은 어색한 한국어 카피를 걸러냅니다 | `claude plugin update ui@baton` |
 
 ### 새로 추가된 플러그인
@@ -137,7 +137,7 @@ claude plugin update feature@baton -s project
 | 플러그인 | 설치 | 처음 실행 |
 |---|---|---|
 | [biome](plugins/biome) | `/plugin install biome@baton` | `/biome:setup` |
-| [prefs](plugins/prefs) | `/plugin install prefs@baton` | 자동 (학습한 프로필을 `~/.claude/CLAUDE.md`로 불러옴) |
+| [prefs](plugins/prefs) | `/plugin install prefs@baton` | 자동 (실행한 폴더에 `learn/`을 만들고 세션 시작 시 불러옴) |
 | [baton](plugins/baton) | `/plugin install baton@baton` | `/baton:update` |
 
 <details>
@@ -170,7 +170,7 @@ claude plugin update feature@baton -s project
 | 기록 | [progress](plugins/progress) | `/progress:update` | 다음 세션이 읽을 진행 문서를 짧게 유지 |
 | 기록 | [context](plugins/context) | `/context:sync` | 루트 CLAUDE.md는 짧게, 폴더별 규칙은 하위 CLAUDE.md로 나눠 관리 |
 | 관리 | [baton](plugins/baton) | `/baton:update` | 설치된 baton 플러그인을 범위·프로젝트에 상관없이 한 번에 업데이트 |
-| 기록 | [prefs](plugins/prefs) | 자동 | 사용자의 요청과 행동에서 작업 방식을 스스로 학습해 다음 작업부터 모든 프로젝트에 적용 |
+| 기록 | [prefs](plugins/prefs) | 자동 | 사용자의 요청과 행동에서 작업 방식을 스스로 학습해 실행한 폴더의 `learn/`에 쌓고, 그 프로젝트의 다음 작업부터 적용 |
 
 슬래시 명령 대신 "기능 만들어줘", "테스트 작성해줘", "커밋하고 푸시해줘"처럼 말해도 됩니다.
 
@@ -199,7 +199,12 @@ claude plugin update feature@baton -s project
 - **progress:** `docs/PROGRESS.md`에 날짜별로 그날의 최종 상태만 남기고 최근 7일치만 둡니다. 세션을 시작할 때 문서보다 새 커밋이 있으면 알려줍니다.
 - **context:** 루트 CLAUDE.md에는 명령, 파일 컨벤션, 하위 문서 목록만 둡니다. 컨벤션은 프로젝트의 기존 관례를 우선하고, Tailwind 규칙은 Tailwind를 쓸 때만 넣습니다. 한 번 실행해 두면 이후로는 CLAUDE.md에 적힌 규칙대로 Claude가 문서를 맞춥니다.
 - **biome:** 같은 기본 컨벤션(들여쓰기 4칸, 줄 길이 100, import 그룹 정렬)을 쓰되, Next·React Native·Expo 등 프로젝트 종류에 맞춰 제외 폴더, 린트 domain, DOM 전용 규칙, import 첫 그룹을 바꿉니다. 기존 `biome.json`, ESLint·Prettier 설정, `lint` 스크립트는 묻지 않고 바꾸지 않습니다.
-- **prefs:** 사용자가 시키지 않아도 Claude가 작업 방식을 스스로 학습합니다. "기억해 둘까요?", "기록할까요?"처럼 묻지 않고, 남길지와 지시문으로 올릴지를 Claude가 판단 근거로 정합니다. 작업을 마칠 때 메인 에이전트가 신호(고친 것, 고른 것, 거절한 것, "앞으로는" 같은 지시, 반복되는 반응, 직접 고친 코드, 학습한 대로 한 결과를 받아들였는지)를 모아 학습 담당 서브에이전트에게 넘깁니다. 서브에이전트는 작업 방식·디자인 스타일·선호 기술·코드 작성 방식·글쓰기·피하는 것 중 하나에 들고 다른 작업에서도 쓰일 신호만 근거 로그(`~/.claude/prefs/signals.md`)에 쌓고, 서로 다른 작업에서 같은 방향이 확인된 것만 일반화해 프로필(`~/.claude/prefs/profile.md`)에 지시문으로 올립니다. 한 번 나온 선택은 로그에만 남습니다. "앞으로는"이라고 했거나 직접 두 번 이상 고른 것은 `[확정]`(묻지 않고 따름), 행동에서 판단한 것은 `[추정]`(다른 근거가 없을 때만 따르고 보고에 밝힘)입니다. 프로필은 `~/.claude/CLAUDE.md`가 불러오므로 모든 프로젝트에 적용되고, 학습한 대로 한 결과를 사용자가 고치면 그 항목을 고치거나 지웁니다. 한 프로젝트에만 맞는 규칙(파일명, 브랜드 색)은 프로필이 아니라 그 프로젝트의 CLAUDE.md에 두자고 보고합니다.
+- **prefs:** 사용자가 시키지 않아도 Claude가 작업 방식을 스스로 학습합니다. "기억해 둘까요?", "기록할까요?"처럼 묻지 않고, 남길지와 지시문으로 올릴지를 Claude가 판단 근거로 정합니다.
+  - **신호 모으기:** 작업을 마칠 때 메인 에이전트가 신호(고친 것, 고른 것, 거절한 것, "앞으로는" 같은 지시, 반복되는 반응, 직접 고친 코드, 학습한 대로 한 결과를 받아들였는지)를 모아 학습 담당 서브에이전트에게 넘깁니다.
+  - **학습:** 작업 방식·디자인 스타일·선호 기술·코드 패턴·글쓰기·피하는 것 중 하나에 들고 그 프로젝트의 다른 작업에서도 쓰일 신호만 `learn/observed.md`에 쌓고, 서로 다른 작업에서 같은 방향이 확인된 것만 일반화해 `learn/learned.md`에 지시문으로 올립니다. 한 번 나온 선택은 `observed.md`에만 남습니다.
+  - **확정과 추정:** "앞으로는"이라고 했거나 직접 두 번 이상 고른 것은 `[확정]`(묻지 않고 따름), 행동에서 판단한 것은 `[추정]`(다른 근거가 없을 때만 따르고 보고에 밝힘)입니다. 학습한 대로 한 결과를 사용자가 고치면 그 항목을 고치거나 지웁니다.
+  - **위치:** `learn/`은 Claude를 실행한 폴더에 있고, 없으면 세션을 시작할 때 빈 양식으로 만듭니다(git 저장소 안일 때만). 모노레포에서 `frontend/`에서 실행하면 `frontend/learn/`을 쓰고 최상위나 다른 폴더의 `learn/`은 참고하지 않습니다. 하위 폴더(`src/` 등)가 아니라 프로젝트 폴더에서 실행하세요.
+  - **공유:** 팀과 나누려면 `learn/`을 커밋하고, 혼자 쓰려면 `.gitignore`에 넣으세요.
 
 ### 함께 설치하면
 

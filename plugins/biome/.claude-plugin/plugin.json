@@ -1,6 +1,6 @@
 {
   "name": "biome",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Biome을 설치하고 프로젝트 종류(Next, React, React Native, Expo 등)에 맞춘 biome.json과 저장 시 포맷·import 정리용 .vscode 설정을 만듦",
   "author": {
     "name": "LimjeongSik",

@@ -1,9 +1,9 @@
 // prefs 플러그인의 session-load.mjs 테스트.
-// 임시 설정 폴더와 git 저장소를 만들어 학습 안내를 항상 넣는지, 프로필을 CLAUDE.md가 불러오지 않을 때만 직접 넣는지,
-// 옛 프로젝트 선호 문서를 옮기라고 알리는지, 길이 제한을 지키는지 확인한다.
+// 임시 설정 폴더와 git 저장소를 만들어 학습 안내를 항상 넣는지, learn/이 없으면 빈 양식으로 만드는지, 프로젝트 루트 learn/learned.md만 넣고 전역 프로필은 넣지 않는지,
+// 옛 프로젝트 선호 문서와 옛 전역 학습 파일을 옮기라고 알리는지, 길이 제한을 지키는지 확인한다.
 
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
@@ -46,23 +46,63 @@ describe("학습 안내 주입", () => {
         const context = run();
         assert.match(context, /스스로 학습한다/);
         assert.match(context, /prefs:learn/);
-        assert.match(context, /아직 학습된 프로필이 없다/);
+        assert.match(context, /learn\//);
+        assert.match(context, /아직 학습한 지시문\(learn\/learned\.md\)이 없다/);
     });
 
-    test("CLAUDE.md가 프로필을 불러오지 않으면 프로필 내용을 직접 넣는다", () => {
-        const config = makeDir({ "prefs/profile.md": PROFILE });
-        assert.match(run({ config }), /1px 테두리/);
+    test("git 저장소에 learn/이 없으면 빈 양식으로 만들고 이미 있으면 건드리지 않는다", () => {
+        const repo = makeDir({}, { git: true });
+        assert.match(run({ repo }), /빈 양식/);
+        assert.ok(existsSync(path.join(repo, "learn/observed.md")));
+        const learned = readFileSync(path.join(repo, "learn/learned.md"), "utf8");
+        assert.match(learned, /## 코드 패턴/);
+        assert.doesNotMatch(learned, /YYYY-MM-DD/);
+        writeFileSync(path.join(repo, "learn/learned.md"), PROFILE);
+        const context = run({ repo });
+        assert.doesNotMatch(context, /빈 양식/);
+        assert.match(context, /1px 테두리/);
     });
 
-    test("CLAUDE.md가 프로필을 불러오면 내용을 다시 넣지 않는다", () => {
-        const config = makeDir({ "prefs/profile.md": PROFILE });
+    test("git 저장소가 아니면 learn/을 만들지 않는다", () => {
+        const dir = makeDir();
+        run({ repo: dir });
+        assert.ok(!existsSync(path.join(dir, "learn")));
+    });
+
+    test("모노레포에서는 실행한 폴더에 learn/을 만들고 git 최상위에는 만들지 않는다", () => {
+        const repo = makeDir({ "frontend/.keep": "" }, { git: true });
+        assert.match(run({ repo: path.join(repo, "frontend") }), /빈 양식/);
+        assert.ok(existsSync(path.join(repo, "frontend/learn/learned.md")));
+        assert.ok(!existsSync(path.join(repo, "learn")));
+    });
+
+    test("실행한 폴더의 learn/만 쓰고 상위 폴더의 learn/은 쓰지 않는다", () => {
+        const repo = makeDir({ "learn/learned.md": PROFILE, "frontend/.keep": "", "backend/learn/learned.md": PROFILE }, { git: true });
+        assert.match(run({ repo }), /1px 테두리/);
+        assert.match(run({ repo: path.join(repo, "backend") }), /1px 테두리/);
+        assert.doesNotMatch(run({ repo: path.join(repo, "frontend") }), /1px 테두리/);
+    });
+
+    test("다른 프로젝트의 learn/learned.md는 넣지 않는다", () => {
+        makeDir({ "learn/learned.md": PROFILE }, { git: true });
+        assert.doesNotMatch(run(), /1px 테두리/);
+    });
+
+    test("전역 프로필은 넣지 않고 옛 전역 학습 파일을 옮기라고 알린다", () => {
+        const config = makeDir({ "prefs/profile.md": PROFILE, "prefs/signals.md": "- 2026-10-21 | x | 작업 방식 | 행동 | y\n" });
         writeFileSync(
             path.join(config, "CLAUDE.md"),
-            `# 내 규칙\n\n<!-- prefs:start -->\n@${path.join(config, "prefs/profile.md")}\n<!-- prefs:end -->\n`,
+            `<!-- prefs:start -->\n@${path.join(config, "prefs/profile.md")}\n<!-- prefs:end -->\n`,
         );
-        const context = run({ config });
-        assert.match(context, /이미 불러왔다/);
+        const repo = makeDir({}, { git: true });
+        const context = run({ config, repo });
         assert.doesNotMatch(context, /1px 테두리/);
+        assert.match(context, /migrate-global/);
+        assert.match(context, new RegExp(path.basename(repo)));
+    });
+
+    test("옛 전역 학습 파일이 없으면 migrate-global을 알리지 않는다", () => {
+        assert.doesNotMatch(run(), /migrate-global/);
     });
 
     test("옛 프로젝트 선호 문서가 있으면 내용을 넣고 migrate를 알린다", () => {
@@ -79,8 +119,8 @@ describe("학습 안내 주입", () => {
     });
 
     test("너무 긴 프로필은 잘라서 넣고 그 사실을 알린다", () => {
-        const config = makeDir({ "prefs/profile.md": PROFILE + "- [추정] 긴 항목\n".repeat(2000) });
-        const context = run({ config });
+        const repo = makeDir({ "learn/learned.md": PROFILE + "- [추정] 긴 항목\n".repeat(2000) }, { git: true });
+        const context = run({ repo });
         assert.ok(context.length < 9500);
         assert.match(context, /잘랐다/);
     });
