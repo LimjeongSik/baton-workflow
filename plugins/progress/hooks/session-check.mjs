@@ -2,6 +2,7 @@
 // SessionStart 훅: 진행 문서의 "최종 갱신" 날짜 이후 쌓인 커밋을 세어, 갱신이 필요하면 컨텍스트로 알린다.
 //
 // 진행 문서가 없는 저장소에서는 아무것도 하지 않는다 (opt-in).
+// git:ship의 마지막 단계 기록(<git-dir>/baton/pipeline.json)에 실패가 남아 있으면 그 원인도 알린다.
 // 경로는 DOCS_PROGRESS_PATH(저장소 루트 기준, 기본 docs/PROGRESS.md)로 바꿀 수 있다.
 // 차단하지 않는다. 판단할 수 없으면 조용히 통과한다.
 
@@ -46,15 +47,26 @@ try {
     done();
 }
 
+// git:ship이 남긴 마지막 단계 기록에 실패가 있으면 다음 세션에 알린다 (git 플러그인 stage.mjs)
+let failure = null;
+try {
+    const pipeline = JSON.parse(readFileSync(path.resolve(root, git(root, "rev-parse", "--git-path", "baton/pipeline.json")), "utf8"));
+    const failed = Object.entries(pipeline.stages ?? {}).find(([, entry]) => entry.status === "failed");
+    if (failed) failure = `마지막 git:ship 실행에서 ${failed[0]} 단계가 실패했다 (${failed[1].reason}, ${failed[1].at}). 이어서 작업하면 이 원인부터 본다.`;
+} catch {}
+
 const ageDays = updated ? Math.floor((Date.now() - Date.parse(`${updated}T00:00:00`)) / 86_400_000) : null;
-if (updated && commits.length === 0) done();
-if (updated && commits.length < 3 && ageDays < STALE_DAYS) done();
+const fresh = updated && (commits.length === 0 || (commits.length < 3 && ageDays < STALE_DAYS));
+if (fresh && !failure) done();
 
 const head = commits.slice(0, 10).join("\n");
 const more = commits.length > 10 ? `\n... 외 ${commits.length - 10}개` : "";
-const context = updated
+const staleNote = fresh
+    ? null
+    : updated
     ? `진행 문서 ${DOC}의 최종 갱신은 ${updated}(${ageDays}일 전)이고, 그 뒤 반영되지 않은 커밋이 ${commits.length}개 있다:\n${head}${more}\n작업을 시작하기 전에 ${DOC}를 읽되, 위 커밋 내용은 문서에 아직 없다는 점을 감안한다. 이번 세션의 작업을 마칠 때 progress:update 스킬로 문서를 갱신한다.`
-    : `진행 문서 ${DOC}에 "최종 갱신: YYYY-MM-DD" 줄이 없어 갱신 시점을 알 수 없다. 작업을 마칠 때 progress:update 스킬로 문서를 갱신해 형식을 맞춘다.`;
+      : `진행 문서 ${DOC}에 "최종 갱신: YYYY-MM-DD" 줄이 없어 갱신 시점을 알 수 없다. 작업을 마칠 때 progress:update 스킬로 문서를 갱신해 형식을 맞춘다.`;
+const context = [staleNote, failure].filter(Boolean).join("\n\n");
 
 process.stdout.write(
     `${JSON.stringify({ hookSpecificOutput: { hookEventName: "SessionStart", additionalContext: context } })}\n`,
