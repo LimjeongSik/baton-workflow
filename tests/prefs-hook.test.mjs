@@ -142,4 +142,45 @@ describe("학습 안내 주입", () => {
         assert.ok(context.length < 9500);
         assert.match(context, /잘랐다/);
     });
+
+    test("학습 파일의 시크릿·개인 정보는 가리고 넣고, 그 사실을 알린다", () => {
+        const secret = "- [확정] 배포 전 ghp_" + "a".repeat(36) + " 토큰으로 확인한다. 문의는 dev@example.com\n";
+        const repo = makeDir({ "learn/learned.md": PROFILE + secret }, { git: true });
+        const context = run({ repo });
+        assert.doesNotMatch(context, /ghp_a{36}/);
+        assert.doesNotMatch(context, /dev@example\.com/);
+        assert.match(context, /가린 값/);
+        assert.match(context, /2개가 있어 가렸다/);
+        const onDisk = readFileSync(path.join(repo, "learn/learned.md"), "utf8");
+        assert.doesNotMatch(onDisk, /ghp_a{36}|dev@example\.com/);
+        assert.match(onDisk, /카드 그림자 대신/);
+    });
+
+    test("자격 증명 URL, 사설 IP, 홈 경로도 가린다", () => {
+        const line = "- 2026-10-26 | 작업 방식 | 고친 것 | postgres://admin:pw123@db/x, 10.0.3.4, /Users/jane/proj\n";
+        const repo = makeDir({ "learn/learned.md": PROFILE, "learn/observed.md": line }, { git: true });
+        run({ repo });
+        const onDisk = readFileSync(path.join(repo, "learn/observed.md"), "utf8");
+        assert.doesNotMatch(onDisk, /pw123|10\.0\.3\.4|jane/);
+        assert.match(onDisk, /2026-10-26 \| 작업 방식/);
+    });
+});
+
+describe("scrub 스크립트", () => {
+    const SCRUB = path.resolve(import.meta.dirname, "../plugins/prefs/scripts/scrub.mjs");
+
+    test("learn/ 파일에서 값을 지우고 개수만 출력한다", () => {
+        const repo = makeDir({ "learn/observed.md": "- 2026-10-26 | 작업 방식 | 고친 것 | api_key=sk-" + "b".repeat(24) + " 를 .env에 둠\n" });
+        const result = spawnSync(process.execPath, [SCRUB, repo], { encoding: "utf8" });
+        assert.equal(result.status, 0);
+        assert.match(result.stdout, /1개 값을 가렸습니다/);
+        assert.doesNotMatch(result.stdout, /sk-b/);
+        assert.doesNotMatch(readFileSync(path.join(repo, "learn/observed.md"), "utf8"), /sk-b{24}/);
+    });
+
+    test("가릴 값이 없으면 파일을 그대로 둔다", () => {
+        const repo = makeDir({ "learn/learned.md": PROFILE });
+        spawnSync(process.execPath, [SCRUB, repo], { encoding: "utf8" });
+        assert.equal(readFileSync(path.join(repo, "learn/learned.md"), "utf8"), PROFILE);
+    });
 });

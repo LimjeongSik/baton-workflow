@@ -9,12 +9,15 @@
 // 프로젝트에 옛 선호 문서(DOCS_PREFERENCES_PATH, 기본 docs/PREFERENCES.md)가 있으면 그 내용도 넣고 learn/으로 옮기라고 알린다.
 // 옛 전역 학습 파일(<설정 폴더>/prefs/)이 남아 있으면 따르지 말고 이 프로젝트 줄만 옮기라고 알린다.
 // 설정 폴더는 CLAUDE_CONFIG_DIR, 없으면 ~/.claude다.
+// 학습 파일에 시크릿·개인 정보로 보이는 값이 있으면 파일에서 지우고, 지운 내용만 넣는다 (scripts/secrets.mjs).
+// recorder가 거르지 못한 값도 다음 세션 시작 때 지워지므로, 학습 파일에 오래 남지 않는다.
 // 차단하지 않는다. 판단할 수 없으면 조용히 통과한다.
 
 import { execFileSync } from "node:child_process";
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
+import { redact } from "../scripts/secrets.mjs";
 
 const CONFIG_DIR = process.env.CLAUDE_CONFIG_DIR || path.join(homedir(), ".claude");
 const GLOBAL_DIR = path.join(CONFIG_DIR, "prefs");
@@ -84,6 +87,24 @@ const parts = [
     `Claude는 이 프로젝트에서 사용자의 작업 방식을 스스로 학습한다. 프로젝트 루트는 ${root}이고, 학습 결과는 그 아래 learn/ 폴더(관찰한 신호 observed.md, 학습한 지시문 learned.md)에만 두고, 다른 프로젝트나 전역(~/.claude)의 학습 내용은 참고하지 않는다. 사용자가 시키기를 기다리지 않고, "기억해 둘까요?", "메모해 둘까요?", "선호로 기록할까요?"처럼 묻지도 않는다. 기록할지는 Claude가 판단 근거로 정한다. 작업 중 사용자가 고르거나 고친 것, 거절한 것, 일반 지시, 사용자의 행동에서 드러난 방식, 프로필대로 한 결과를 사용자가 받아들였는지 고쳤는지를 지켜보고, 작업을 마칠 때 신호가 있었다고 판단하면 prefs:learn 스킬로 넘긴다. 신호는 근거일 뿐이고, 이 프로젝트의 여러 작업에서 같은 방향이 확인된 것만 프로필 지시문이 된다.`,
 ];
 
+let redacted = 0;
+const safe = (text) => {
+    const result = redact(text);
+    redacted += result.count;
+    return result.text;
+};
+// learn/ 파일은 이 플러그인이 관리하므로 그 자리에서 지운다. 옛 선호 문서는 사용자 문서라서 가리기만 한다.
+const scrubFile = (file) => {
+    try {
+        const raw = readFileSync(file, "utf8");
+        const result = redact(raw);
+        if (result.count > 0) writeFileSync(file, result.text);
+        redacted += result.count;
+    } catch {}
+};
+scrubFile(LEARNED);
+scrubFile(path.join(LEARN_DIR, "observed.md"));
+
 const learned = read(LEARNED);
 if (created) {
     parts.push(
@@ -96,7 +117,7 @@ if (!/^- \[(확정|추정)\]/m.test(learned)) {
     parts.push(`이 프로젝트에서 학습한 지시문(learn/learned.md)이다. ${FOLLOW}\n\n${clip(learned, "학습한 지시문")}`);
 }
 
-const legacy = read(path.join(gitRoot, LEGACY_DOC));
+const legacy = safe(read(path.join(gitRoot, LEGACY_DOC)));
 if (legacy) {
     parts.push(
         `이 프로젝트에 옛 선호 문서(${LEGACY_DOC})가 있다. 프로필과 함께 따르고, 처음 prefs:learn을 쓸 때 recorder에게 migrate ${LEGACY_DOC}를 넘겨 learn/으로 옮긴다.\n\n${clip(legacy, "옛 선호 문서")}`,
@@ -107,6 +128,12 @@ const globalImport = read(path.join(CONFIG_DIR, "CLAUDE.md")).includes(IMPORT_MA
 if (globalImport || existsSync(path.join(GLOBAL_DIR, "profile.md")) || existsSync(path.join(GLOBAL_DIR, "signals.md"))) {
     parts.push(
         `옛 버전이 남긴 전역 학습 파일(${GLOBAL_DIR})이 있다. 여러 프로젝트가 섞인 내용이라 따르지 않는다. 전역 CLAUDE.md가 불러온 프로필도 이 프로젝트에서는 무시한다. 처음 prefs:learn을 쓸 때 recorder에게 migrate-global을 넘겨 이 프로젝트(${path.basename(gitRoot)})의 줄만 learn/으로 옮긴다.`,
+    );
+}
+
+if (redacted > 0) {
+    parts.push(
+        `학습 파일에 시크릿·개인 정보로 보이는 값 ${redacted}개가 있어 가렸다 (learn/ 파일에서는 지웠다). 가린 값을 복원하거나 추측하지 않고, 같은 값을 다시 학습 파일에 쓰지 않는다.`,
     );
 }
 
