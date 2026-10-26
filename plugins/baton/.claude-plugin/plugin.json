@@ -1,12 +1,12 @@
 {
   "name": "baton",
-  "version": "0.1.0",
-  "description": "설치된 baton 플러그인을 범위와 프로젝트에 상관없이 한 번에 업데이트",
+  "version": "0.2.0",
+  "description": "설치된 baton 플러그인을 한 번에 업데이트하고, 세션의 토큰·시간·호출 수를 실측",
   "author": {
     "name": "LimjeongSik",
     "url": "https://github.com/LimjeongSik"
   },
   "repository": "https://github.com/LimjeongSik/baton-workflow",
   "license": "MIT",
-  "keywords": ["update", "maintenance"]
+  "keywords": ["update", "maintenance", "usage", "tokens"]
 }
