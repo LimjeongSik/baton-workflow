@@ -48,7 +48,8 @@ const pathWithoutCodex = (process.env.PATH ?? "")
     .join(path.delimiter);
 
 const baseEnv = {
-    ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^(REVIEW_GATE|SECURITY_GATE|GIT_)/.test(key))),
+    ...Object.fromEntries(Object.entries(process.env).filter(([key]) => !/^(REVIEW_GATE|SECURITY_GATE|GIT_|BATON_|CLAUDECODE)/.test(key))),
+    BATON_BACKSTOP: "0",
     PATH: `${fakeBin}${path.delimiter}${pathWithoutCodex}`,
     GIT_CONFIG_GLOBAL: "/dev/null",
     GIT_CONFIG_NOSYSTEM: "1",
@@ -272,39 +273,10 @@ describe("두 게이트 동시 사용", () => {
     });
 });
 
-// 플러그인은 따로 설치되므로 게이트 코드를 복사해 둔다. 복사본이 어긋나면 한쪽에만 버그 수정이 들어간 것이다.
-describe("복사된 게이트 코드 동기화", () => {
-    const read = (rel) => readFileSync(path.join(PLUGINS, rel), "utf8");
-    const between = (source, start, end) => {
-        const from = source.indexOf(start);
-        const to = source.indexOf(end, from);
-        assert.ok(from >= 0 && to > from, `구간을 찾을 수 없습니다: ${start} ~ ${end}`);
-        return source.slice(from, to);
-    };
-
-    test("git 명령 해석부가 같다", () => {
-        const start = "// 셸 명령을";
-        const end = "const howToFix";
-        assert.equal(
-            between(read("security/hooks/guard-git.mjs"), start, end),
-            between(read("review/hooks/guard-git.mjs"), start, end),
-        );
-    });
-
-    test("소스 판정 목록이 같다", () => {
-        const start = "const NON_SOURCE_EXTENSIONS";
-        const end = "function stateFile";
-        assert.equal(
-            between(read("security/lib/audit-state.mjs"), start, end),
-            between(read("review/lib/review-state.mjs"), start, end),
-        );
-    });
-
-    test("변경 수집 로직이 같다", () => {
-        const start = "function worktreeHash";
-        assert.equal(
-            between(read("security/lib/audit-state.mjs"), start, "export function unaudited"),
-            between(read("review/lib/review-state.mjs"), start, "export function unreviewed"),
-        );
+// 플러그인은 따로 설치되므로 공통 코드(shared/)를 각 플러그인 lib/에 복사해 둔다. 복사본이 어긋나면 한쪽에만 수정이 들어간 것이다.
+describe("공통 코드 복사본 동기화", () => {
+    test("shared/와 플러그인 lib/의 복사본이 같다", () => {
+        const result = spawnSync(process.execPath, [path.resolve(PLUGINS, "../scripts/sync-shared.mjs"), "--check"], { encoding: "utf8" });
+        assert.equal(result.status, 0, result.stderr);
     });
 });
