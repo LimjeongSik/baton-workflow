@@ -1,6 +1,6 @@
 {
   "name": "git",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "description": "사전 검사 → 테스트 → 보안 감사 → 코드 리뷰를 거쳐 변경을 나눠 커밋하고 푸시하는 워크플로우",
   "author": {
     "name": "LimjeongSik",
