@@ -1,7 +1,7 @@
 ---
 name: sign-off
 description: 보안 감사를 마치고 지적을 판단·반영한 뒤, 지금 내용을 "보안 감사 통과"로 기록해 커밋·푸시 게이트를 연다. security:audit 결과를 처리한 직후, 또는 커밋·푸시가 보안 게이트에 막혔을 때 사용한다. 감사 없이 게이트를 여는 용도로 쓰지 않는다.
-argument-hint: "[--skip \"이유\"]"
+argument-hint: "[--auto | --skip \"이유\"]"
 allowed-tools: Read, Bash
 ---
 
@@ -12,6 +12,8 @@ security 플러그인은 Claude가 실행하는 `git commit` / `git push`를 훅
 - 통과는 **파일 내용(blob 해시) 단위**로 `<git-dir>/security-audit/passed.json`에 기록된다. 저장소에는 커밋되지 않는다.
 - 기록한 뒤에 파일이 바뀌면 그 파일은 다시 감사 대상이 된다. 코드 리뷰를 반영해 파일이 바뀐 경우도 마찬가지다.
 - 감사를 마친 변경은 여러 커밋으로 나눠 담아도 된다.
+- 공백·줄바꿈만 바뀐 파일은 이전 통과를 이어받는다(Python·YAML처럼 공백이 의미를 갖는 파일은 제외).
+- 처음 기록하면 `.git/hooks`에 pre-commit·pre-push 백스톱을 설치한다(기존 훅이나 `core.hooksPath`가 있으면 건너뛴다). Claude Code가 실행한 커밋·푸시만 검사한다. 끄려면 `BATON_BACKSTOP=0`.
 - 문서·에셋·lockfile·`.claude/` 설정은 검사하지 않는다. merge·cherry-pick·revert·rebase 중의 커밋, 원격 브랜치 삭제도 검사하지 않는다.
 
 ## 기록해도 되는 조건
@@ -37,6 +39,16 @@ node "${CLAUDE_SKILL_DIR}/scripts/mark-passed.mjs"
 
 게이트에 막힌 파일만 다시 감사하면 된다. 예를 들어 코드 리뷰를 반영해 `src/auth.ts`가 바뀌었다면 `security:audit src/auth.ts`로 그 파일만 감사하고, 위 조건을 확인한 뒤 다시 기록한다.
 
+### 자동 기록 (위험도가 낮은 변경)
+
+변경이 민감하지 않으면(인증·API·서버·설정·의존성 경로가 아니고, 추가된 줄에 시크릿·토큰 저장·셸 실행·`innerHTML`·SQL 같은 패턴이 없으면) 감사 에이전트를 부르지 않고 시크릿 자동 스캔(A절)만으로 기록할 수 있다. 사용자 동의는 필요 없다. 위험도 판정과 스캔은 스크립트가 직접 하므로, 민감한 변경이거나 스캔에 걸리면 기록하지 않고 종료 코드 3과 근거를 낸다. 그때는 `security:audit`(또는 `security:auditor`)로 감사한다.
+
+```bash
+node "${CLAUDE_SKILL_DIR}/scripts/mark-passed.mjs" --auto
+```
+
+`BATON_MODE=strict`면 자동 기록하지 않는다. 어떤 모드도 민감한 변경을 자동 기록하지 않는다.
+
 ### 감사 생략
 
 감사가 필요 없는 변경(생성된 코드, 포맷만 바뀐 변경 등)이라고 판단하면, **그 이유를 사용자에게 밝히고 동의를 받은 뒤에만** 생략으로 기록한다. 사용자가 "보안 감사 없이 커밋해"라고 직접 요청한 경우도 같다.
@@ -50,6 +62,10 @@ node "${CLAUDE_SKILL_DIR}/scripts/mark-passed.mjs" --skip "포매터 실행 결�
 ## 게이트 끄기
 
 프로젝트의 `.claude/settings.json`의 `env`에 넣는다: `SECURITY_GATE=0`(전체), `SECURITY_GATE_COMMIT=0`, `SECURITY_GATE_PUSH=0`.
+
+## 통과의 의미
+
+감사 통과는 "이번 변경에서 악용 경로를 찾지 못했다"는 기록이지 보안 보증이 아니다. 자동 기록은 패턴 스캔일 뿐이다. 의존성 취약점(`npm audit` 등), 정적 분석, CI 검사는 이 게이트가 대신하지 않는다. 보고할 때 "보안 문제 없음"이라고 쓰지 말고, 무엇을 확인했는지(감사 또는 자동 스캔)를 쓴다.
 
 ## 하지 않을 것
 

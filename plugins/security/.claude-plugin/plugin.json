@@ -1,6 +1,6 @@
 {
   "name": "security",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "변경분을 보안 관점으로 감사해 악용 경로가 있는 지적만 보고하고, 감사를 통과하기 전에는 커밋·푸시를 막는 게이트",
   "author": {
     "name": "LimjeongSik",
