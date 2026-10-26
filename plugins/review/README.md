@@ -32,10 +32,13 @@ npm install -g @openai/codex
 
 | 인자 | 의미 |
 |---|---|
-| (없음) | `adversarial-review`. 커밋되지 않은 변경이 있으면 작업 트리를, 없으면 마지막 리뷰 지점 이후 커밋을 리뷰 |
-| `review` | 일반 리뷰 모드 |
+| (없음) | 아직 리뷰하지 않은 내용만 리뷰 (미커밋 변경 + 원격에 없는 커밋 중 통과하지 않은 줄). 모드는 위험도로 고름: 민감한 변경은 `adversarial-review`, 그 외는 `review`. 리뷰할 내용이 없으면 codex를 부르지 않음 |
+| `review` / `adversarial-review` | 모드를 직접 지정 |
+| `--full` | 예전처럼 작업 트리 전체(깨끗하면 마지막 리뷰 지점 이후 커밋)를 리뷰 |
 | `--base origin/main` | 커밋 범위를 직접 지정 (처음 도입할 때 권장) |
 | `"인증 경로"` | 마지막 인자로 주면 포커스 텍스트로 쓰임 |
+
+작고 민감하지 않은 변경(기본 소스 20줄·3개 파일 이하)은 codex를 부르지 않고 자동 생략으로 기록합니다. `BATON_MODE`(`fast`·`standard`·`strict`)로 조절하고, 어떤 모드도 민감한 변경은 건너뛰지 않습니다.
 
 흐름: 품질 게이트 → codex 리뷰 → 지적마다 코드 검증 → 채택한 것만 최소 수정 → 재검증 → (critical/high를 반영했다면) 재리뷰 1회 → 리뷰 통과 기록 → 채택/기각 표로 보고
 
@@ -75,6 +78,8 @@ Stop 훅도 함께 동작합니다. 이 저장소에서 한 번이라도 리뷰�
 | `REVIEW_GATE_COMMIT=0` | 커밋 게이트만 끄기. 커밋을 먼저 하고 나중에 리뷰하는 흐름. 푸시는 여전히 막힘 |
 | `REVIEW_GATE_PUSH=0` | 푸시 게이트만 끄기 |
 | `REVIEW_GATE_STOP=0` | 종료 시 리뷰 요청 끄기 |
+| `BATON_MODE=fast` · `standard` · `strict` | 위험도 판정 조절 (security·git과 같이 씀) |
+| `BATON_BACKSTOP=0` | `.git/hooks` 백스톱을 설치하지 않음 |
 
 게이트는 Claude가 실행하는 명령만 검사합니다. 터미널에서 직접 실행하는 git 명령은 막지 않습니다.
 

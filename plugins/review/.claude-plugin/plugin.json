@@ -1,6 +1,6 @@
 {
   "name": "review",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "커밋 전에 Codex 리뷰를 받아 검증된 지적만 반영하고, 리뷰를 통과하기 전에는 커밋·푸시를 막는 게이트",
   "author": {
     "name": "LimjeongSik",
