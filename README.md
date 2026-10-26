@@ -56,6 +56,9 @@ Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace Limje
 | 테스트 | 같은 폴더의 `__tests__/*.test.ts(x)` | JS/TS 프로젝트 |
 | 주석 | 최대 2줄, 함수 본문·객체 리터럴 안에는 쓰지 않음, 코드로 알 수 있는 내용은 쓰지 않음 | 모든 프로젝트 |
 | Tailwind | 정규형 클래스, 테마 토큰과 같은 값이면 토큰 유틸리티 사용 | Tailwind를 쓸 때만 |
+| React 훅 | 파생 값은 `useState`에 두지 않고 렌더 중 계산, `useEffect`는 외부 시스템 동기화에만, 의존성·정리 함수 빠뜨리지 않음 | React · React Native |
+| 웹 | 렌더링(서버·클라이언트 경계, 리렌더 범위), 네트워크(요청 위치·캐시), 상태(단일 출처, URL 상태) | 웹 프로젝트 |
+| 앱 | 화면 스택(파라미터 계약, 포커스·이탈 처리), 목록 가상화, 화면·전역 상태 구분, 오프라인·재시도 | React Native · Expo |
 
 기존 프로젝트에서 실행해도 기존 코드나 사용자가 쓴 규칙을 바꾸지 않습니다.
 
@@ -63,7 +66,7 @@ Claude Code 2.1.275 이상에서는 `/plugin install feature --marketplace Limje
 - 기존 CLAUDE.md의 내용은 지우지 않습니다. 기본값과 충돌하는 규칙은 고치지 않고 보고만 합니다.
 - 파일 이름 변경, 폴더 이동, 기존 주석 삭제, 커밋은 하지 않습니다.
 
-하위 CLAUDE.md는 다른 폴더가 기대는 계약, 그 폴더 전용 패턴, 틀리기 쉬운 전제(단위, 시간대, 서버·클라이언트 경계)가 있는 폴더에만 만듭니다. 단순 컴포넌트 모음에는 만들지 않습니다. 자세한 내용은 [context](plugins/context)에 있습니다.
+하위 CLAUDE.md는 다른 폴더가 기대는 계약, 그 폴더 전용 패턴, 틀리기 쉬운 전제(단위, 시간대, 서버·클라이언트 경계)가 있는 폴더에만 만듭니다. 단순 컴포넌트 모음에는 만들지 않습니다. 웹 프로젝트는 렌더링·네트워크·상태 관리, 앱 프로젝트는 화면 스택·렌더링·상태 관리·네트워크를 중심으로 씁니다. 자세한 내용은 [context](plugins/context)에 있습니다.
 
 </details>
 
@@ -127,6 +130,7 @@ claude plugin update feature@baton -s project
 |---|---|---|---|
 | [prefs](plugins/prefs) | 0.4.1 | 학습 결과를 전역(`~/.claude`)이 아니라 **Claude를 실행한 폴더의 `learn/`** 에 둡니다. 관찰한 신호는 `learn/observed.md`, 학습한 지시문은 `learn/learned.md`이고, `learn/`이 없으면 세션을 시작할 때 만들고 `.gitignore`에 넣습니다. 모노레포에서 `frontend/`에서 실행하면 `frontend/learn/`을 씁니다. 프로젝트마다 선호 기술·패턴이 다르므로 다른 프로젝트의 학습은 참고하지 않습니다. 0.3.0이 `~/.claude/prefs/`에 남긴 신호는 처음 학습할 때 그 프로젝트 줄만 옮기고, 다 옮기면 전역 파일과 `~/.claude/CLAUDE.md`의 불러오기 블록을 지웁니다 | `claude plugin update prefs@baton` |
 | ui, feature, refactor, test, git, biome | 0.1.6 · 0.1.4 · 0.1.4 · 0.1.4 · 0.3.4 · 0.1.2 | 프로젝트의 `learn/learned.md`에서 학습한 프로필을 따릅니다 | `claude plugin update <이름>@baton` |
+| [context](plugins/context) | 0.1.2 | 웹은 렌더링·네트워크·상태 관리, 앱은 화면 스택·렌더링·상태 관리·네트워크 위주로 CLAUDE.md를 씁니다. React · React Native 프로젝트에는 `useState`·`useEffect`를 남발하지 않는 훅 규칙(파생 값은 렌더 중 계산, effect는 외부 동기화에만, 의존성·정리 함수)을 넣습니다 | `claude plugin update context@baton` |
 | [all](plugins/all) | 0.4.0 | baton 플러그인을 함께 설치합니다 | `claude plugin update all@baton` |
 | [ui](plugins/ui) | 0.1.4 | 텍스트 스타일마다 자간·행간을 정하고 목업에서 보고 조정합니다. 번역투·섞인 말투·노출된 "을(를)" 같은 어색한 한국어 카피를 걸러냅니다 | `claude plugin update ui@baton` |
 
@@ -197,7 +201,7 @@ claude plugin update feature@baton -s project
 - **security:** "어떻게 악용되는가"를 한 줄로 쓸 수 없는 지적은 보고하지 않습니다. 지적이 없으면 없다고 보고합니다.
 - **review:** 지적마다 코드를 확인해서 반영할 것과 기각할 것을 나누고, 근거를 표로 남깁니다.
 - **progress:** `docs/PROGRESS.md`에 날짜별로 그날의 최종 상태만 남기고 최근 7일치만 둡니다. 세션을 시작할 때 문서보다 새 커밋이 있으면 알려줍니다.
-- **context:** 루트 CLAUDE.md에는 명령, 파일 컨벤션, 하위 문서 목록만 둡니다. 컨벤션은 프로젝트의 기존 관례를 우선하고, Tailwind 규칙은 Tailwind를 쓸 때만 넣습니다. 한 번 실행해 두면 이후로는 CLAUDE.md에 적힌 규칙대로 Claude가 문서를 맞춥니다.
+- **context:** 루트 CLAUDE.md에는 명령, 파일 컨벤션, 하위 문서 목록만 둡니다. 컨벤션은 프로젝트의 기존 관례를 우선하고, Tailwind 규칙은 Tailwind를 쓸 때만, React 훅 규칙(`useState`·`useEffect` 남발 금지)은 React · React Native일 때만 넣습니다. 웹과 앱은 각각 다른 초점으로 씁니다. 한 번 실행해 두면 이후로는 CLAUDE.md에 적힌 규칙대로 Claude가 문서를 맞춥니다.
 - **biome:** 같은 기본 컨벤션(들여쓰기 4칸, 줄 길이 100, import 그룹 정렬)을 쓰되, Next·React Native·Expo 등 프로젝트 종류에 맞춰 제외 폴더, 린트 domain, DOM 전용 규칙, import 첫 그룹을 바꿉니다. 기존 `biome.json`, ESLint·Prettier 설정, `lint` 스크립트는 묻지 않고 바꾸지 않습니다.
 - **prefs:** 사용자가 시키지 않아도 Claude가 작업 방식을 스스로 학습합니다. "기억해 둘까요?", "기록할까요?"처럼 묻지 않고, 남길지와 지시문으로 올릴지를 Claude가 판단 근거로 정합니다.
   - **신호 모으기:** 작업을 마칠 때 메인 에이전트가 신호(고친 것, 고른 것, 거절한 것, "앞으로는" 같은 지시, 반복되는 반응, 직접 고친 코드, 학습한 대로 한 결과를 받아들였는지)를 모아 학습 담당 서브에이전트에게 넘깁니다.

@@ -120,6 +120,14 @@ const aliases = Object.fromEntries(
 );
 
 const frameworks = ["next", "react", "react-native", "expo", "vue", "nuxt", "svelte", "@sveltejs/kit", "astro", "@remix-run/react", "express", "fastify", "@nestjs/core", "hono"].filter(has);
+// react-native 프로젝트도 react를 가지므로 앱 판정을 먼저 한다
+const platform = has("react-native") || has("expo") ? "app" : ["next", "react", "vue", "nuxt", "svelte", "@sveltejs/kit", "astro", "@remix-run/react"].some(has) ? "web" : null;
+const libs = {
+    state: ["zustand", "jotai", "recoil", "@reduxjs/toolkit", "redux", "mobx", "valtio", "pinia", "xstate"].filter(has),
+    network: ["@tanstack/react-query", "@tanstack/vue-query", "swr", "@apollo/client", "urql", "@trpc/client", "axios", "ky"].filter(has),
+    navigation: ["expo-router", "@react-navigation/native", "@react-navigation/native-stack", "@react-navigation/stack", "@react-navigation/bottom-tabs"].filter(has),
+    reactCompiler: has("babel-plugin-react-compiler"),
+};
 
 const testFiles = files.filter((f) => /\.(test|spec)\.[cm]?[jt]sx?$/.test(f));
 const tests = {
@@ -194,6 +202,8 @@ process.stdout.write(
                 tailwind,
                 typescript: has("typescript") || existsSync(path.join(root, "tsconfig.json")),
                 frameworks,
+                platform,
+                libs,
                 aliases,
                 srcDir: isDir("src"),
                 tests,
