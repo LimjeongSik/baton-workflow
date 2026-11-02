@@ -1,0 +1,6 @@
+# 배포 ZIP(scripts/package.mjs)에서 뺄 개발용 파일
+tests/ export-ignore
+shared/ export-ignore
+scripts/ export-ignore
+.gitignore export-ignore
+.gitattributes export-ignore

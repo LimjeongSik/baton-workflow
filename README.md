@@ -274,12 +274,14 @@ plugins/<이름>/
 └── lib/                 # shared/에서 복사한 공통 코드 (review·security·git·progress)
 shared/gate-core.mjs     # 게이트 공통 코드의 정본
 scripts/sync-shared.mjs  # 정본을 각 플러그인 lib/로 복사
+scripts/package.mjs      # 배포용 ZIP 만들기
 ```
 
 1. 위 구조로 플러그인을 만들고 `.claude-plugin/marketplace.json`에 등록합니다.
 2. `claude plugin validate .`와 `claude plugin validate plugins/<이름>`으로 검증합니다.
 3. `node --test tests/*.test.mjs`로 테스트를 돌립니다.
 4. `claude --plugin-dir plugins/<이름>`으로 실제 프로젝트에서 써 봅니다.
+5. 배포용 ZIP은 `node scripts/package.mjs`로 만듭니다. 커밋된 파일만 `dist/`에 묶고, `.git/`·`.DS_Store`와 개발용 파일(`tests/`, `shared/`, `scripts/`)은 뺍니다.
 
 **공통 코드.** 변경 수집, 명령 해석, 위험도 판정, 리뷰 델타, git 훅 백스톱은 `shared/gate-core.mjs`에 있습니다. 플러그인은 따로 설치되어 서로의 파일을 import할 수 없으므로 각 플러그인의 `lib/`에 복사본을 둡니다. 정본을 고친 뒤 `node scripts/sync-shared.mjs`로 복사하세요. 복사본이 어긋나면 테스트가 실패합니다.
 
