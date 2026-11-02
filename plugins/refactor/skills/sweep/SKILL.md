@@ -36,8 +36,10 @@ git status --short --untracked-files=all
 기준선을 돌린다:
 
 ```bash
-<lint> && <typecheck> && <test> 2>&1 | tail -20
+set -o pipefail; <lint> && <typecheck> && <test> 2>&1 | tail -20
 ```
+
+출력을 줄이더라도 **성공 여부는 종료 코드로 판단한다.** `set -o pipefail` 없이 `| tail`을 붙이면 tail의 종료 코드(0)가 남아 테스트 실패가 가려진다.
 
 - 기준선이 이미 실패하면 리팩터링을 시작하지 않고 먼저 알린다.
 - **테스트 스위트 수와 케이스 수를 적어 둔다.** 마지막에 이 숫자가 그대로여야 한다.
@@ -107,7 +109,7 @@ git ls-files | awk -F/ 'NF>2{print $1"/"$2} NF==2{print $1} NF==1{print "(root)"
 ## 4. 검증: 메인이 직접 다시 돌린다
 
 ```bash
-<lint> && <typecheck> && <test> 2>&1 | tail -20
+set -o pipefail; <lint> && <typecheck> && <test> 2>&1 | tail -20
 git diff --stat
 ```
 
