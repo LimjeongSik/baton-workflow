@@ -1,5 +1,5 @@
 // shared/gate-core.mjs로 옮긴 게이트 강화 기능 테스트: 명령 해석 보강, 판단 불가 시 차단,
-// 공백 변경 통과 승계, 위험도 판정과 자동 기록, 리뷰 델타, git 훅 백스톱, ship 단계 기록.
+// 공백 변경 재검사, 검사한 내용만 통과 기록, 위험도 판정과 자동 기록, 리뷰 델타, git 훅 백스톱, ship 단계 기록.
 // 실행: node --test tests/
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -137,28 +137,81 @@ describe("판단할 수 없을 때 통과시키지 않는다", () => {
 });
 
 describe("공백만 바뀐 변경", () => {
-    test("통과한 내용과 공백만 다르면 다시 막지 않는다", () => {
+    // 문자열·주석·문법을 모르는 공백 정규화는 동작이 바뀐 변경도 같다고 본다. 내용이 다르면 다시 검사한다.
+    test("문자열 안의 공백이 바뀌면 다시 막는다", () => {
         const repo = makeRepo();
-        repo.write("src/a.js", "function a() {\n  return 1;\n}\n");
+        repo.write("src/a.js", 'export const s = "a b";\n');
         assert.equal(run(REVIEW_MARK, repo.root).status, 0);
-        repo.write("src/a.js", "function a() {\n    return 1;\n}\n\n");
-        assert.equal(runHook(REVIEW_HOOK, repo.root, "git add -A && git commit -m t").decision, "allow");
-    });
-
-    test("단어가 붙거나 내용이 바뀌면 다시 막는다", () => {
-        const repo = makeRepo();
-        repo.write("src/a.js", "function a() {\n  return x;\n}\n");
-        run(REVIEW_MARK, repo.root);
-        repo.write("src/a.js", "function a() {\n  returnx;\n}\n");
+        repo.write("src/a.js", 'export const s = "a  b";\n');
         assert.equal(runHook(REVIEW_HOOK, repo.root, "git add -A && git commit -m t").decision, "deny");
     });
 
-    test("공백이 의미를 갖는 파일(Python 등)은 이어받지 않는다", () => {
+    test("줄바꿈이 반환값을 바꾸면 다시 막는다 (return\\n42 → return 42)", () => {
         const repo = makeRepo();
-        repo.write("src/a.py", "if x:\n    y()\nz()\n");
-        run(SECURITY_MARK, repo.root);
-        repo.write("src/a.py", "if x:\n    y()\n    z()\n");
+        repo.write("src/a.js", "function f() {\n  return\n  42;\n}\n");
+        assert.equal(run(SECURITY_MARK, repo.root).status, 0);
+        repo.write("src/a.js", "function f() {\n  return 42;\n}\n");
         assert.equal(runHook(SECURITY_HOOK, repo.root, "git add -A && git commit -m t").decision, "deny");
+    });
+
+    test("리뷰 델타에도 공백만 바뀐 파일이 나온다", () => {
+        const repo = makeRepo();
+        repo.write("src/a.js", "const t = `x`;\n");
+        run(REVIEW_MARK, repo.root);
+        repo.write("src/a.js", "const t = `x `;\n");
+        const result = run(DELTA, repo.root, ["prepare"]);
+        assert.match(result.stdout, /^EMPTY=0$/m);
+        const worktree = result.stdout.match(/^WORKTREE=(.*)$/m)[1];
+        run(DELTA, repo.root, ["cleanup", worktree]);
+    });
+});
+
+describe("통과 기록은 검사한 내용만 담는다", () => {
+    test("작업 트리와 다른 staged 내용은 통과로 기록하지 않는다", () => {
+        const repo = makeRepo();
+        repo.write("src/a.js", "export const v = 'A';\n");
+        repo.git("add", "src/a.js");
+        repo.write("src/a.js", "export const v = 'B';\n");
+        assert.equal(run(REVIEW_MARK, repo.root).status, 0);
+        // B만 리뷰했으므로 index의 A를 그대로 커밋하면 막는다
+        assert.equal(runHook(REVIEW_HOOK, repo.root, "git commit -m t").decision, "deny");
+        // B를 올려서 커밋하면 index의 A는 B로 바뀌므로 통과한다
+        assert.equal(runHook(REVIEW_HOOK, repo.root, "git add src/a.js && git commit -m t").decision, "allow");
+        assert.equal(runHook(REVIEW_HOOK, repo.root, "git commit -am t").decision, "allow");
+    });
+
+    test("보안 감사도 같은 원칙을 따른다", () => {
+        const repo = makeRepo();
+        repo.write("src/a.js", "export const v = 'A';\n");
+        repo.git("add", "src/a.js");
+        repo.write("src/a.js", "export const v = 'B';\n");
+        run(SECURITY_MARK, repo.root);
+        assert.equal(runHook(SECURITY_HOOK, repo.root, "git commit -m t").decision, "deny");
+        repo.git("add", "src/a.js");
+        assert.equal(runHook(SECURITY_HOOK, repo.root, "git commit -m t").decision, "allow");
+    });
+});
+
+describe("실행될 수 있는 파일은 검사 대상이다", () => {
+    test("MDX·SVG와 에이전트 설정(.claude/, 스킬·에이전트 정의)은 소스로 본다", () => {
+        const repo = makeRepo();
+        repo.write("docs/page.mdx", "export const x = eval(input);\n");
+        repo.write("assets/icon.svg", "<svg><script>alert(1)</script></svg>\n");
+        repo.write(".claude/settings.json", '{"hooks": {}}\n');
+        repo.write("plugins/p/skills/s/SKILL.md", "# skill\n");
+        repo.write("plugins/p/agents/a.md", "# agent\n");
+        const reason = runHook(REVIEW_HOOK, repo.root, "git add -A && git commit -m t").reason;
+        for (const file of ["docs/page.mdx", "assets/icon.svg", ".claude/settings.json", "SKILL.md", "agents/a.md"]) {
+            assert.match(reason, new RegExp(file.replace(/\./g, "\\.")));
+        }
+    });
+
+    test("일반 문서와 이미지는 여전히 검사하지 않는다", () => {
+        const repo = makeRepo();
+        repo.write("README.md", "# hi\n");
+        repo.write("docs/guide.md", "guide\n");
+        repo.write("assets/a.png", "png");
+        assert.equal(runHook(REVIEW_HOOK, repo.root, "git add -A && git commit -m t").decision, "allow");
     });
 });
 

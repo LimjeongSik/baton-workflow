@@ -12,7 +12,8 @@ security 플러그인은 Claude가 실행하는 `git commit` / `git push`를 훅
 - 통과는 **파일 내용(blob 해시) 단위**로 `<git-dir>/security-audit/passed.json`에 기록된다. 저장소에는 커밋되지 않는다.
 - 기록한 뒤에 파일이 바뀌면 그 파일은 다시 감사 대상이 된다. 코드 리뷰를 반영해 파일이 바뀐 경우도 마찬가지다.
 - 감사를 마친 변경은 여러 커밋으로 나눠 담아도 된다.
-- 공백·줄바꿈만 바뀐 파일은 이전 통과를 이어받는다(Python·YAML처럼 공백이 의미를 갖는 파일은 제외).
+- 기록 뒤에 내용이 바뀐 파일은 공백만 바뀌었어도 다시 감사 대상이다.
+- 기록하는 것은 지금 작업 트리 내용이다. `git add`로 올린 뒤 다시 고친 파일은 index의 옛 내용이 기록되지 않으므로, 커밋 전에 다시 `git add`한다.
 - 처음 기록하면 `.git/hooks`에 pre-commit·pre-push 백스톱을 설치한다(기존 훅이나 `core.hooksPath`가 있으면 건너뛴다). Claude Code가 실행한 커밋·푸시만 검사한다. 끄려면 `BATON_BACKSTOP=0`.
 - 문서·에셋·lockfile·`.claude/` 설정은 검사하지 않는다. merge·cherry-pick·revert·rebase 중의 커밋, 원격 브랜치 삭제도 검사하지 않는다.
 

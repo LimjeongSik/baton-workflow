@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 지금 시점의 미커밋·미푸시 소스 내용을 "리뷰 통과"로 기록하고 refs/codex-review/last를 HEAD로 옮긴다.
+// 지금 작업 트리의 미커밋·미푸시 소스 내용(리뷰가 본 내용)을 "리뷰 통과"로 기록하고 refs/codex-review/last를 HEAD로 옮긴다.
 // 이 기록이 있어야 guard-git 훅이 커밋·푸시를 허용한다. 처음 기록할 때 git 훅 백스톱도 설치한다.
 //
 // 사용법:
@@ -29,6 +29,7 @@ if (!root) {
 }
 
 let auto = null;
+let snapshot = {};
 if (args.includes("--auto")) {
     const risk = classifyRisk(root);
     if (risk.plan.review !== "skip" && risk.plan.review !== "none") {
@@ -38,12 +39,13 @@ if (args.includes("--auto")) {
         );
         process.exit(3);
     }
+    snapshot = { tree: risk.tree, base: risk.base };
     auto = `risk:${risk.effective} (소스 ${risk.stats.sourceFiles}개 파일, ${risk.stats.sourceLines}줄)`;
 }
 
 let changes;
 try {
-    changes = markReviewed(root, { reason, auto, logFile: option("--log") });
+    changes = markReviewed(root, { reason, auto, logFile: option("--log"), ...snapshot });
 } catch (error) {
     console.error(error.message);
     process.exit(2);

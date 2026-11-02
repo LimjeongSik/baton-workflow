@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// 지금 시점의 미커밋·미푸시 소스 내용을 "보안 감사 통과"로 기록한다.
+// 지금 작업 트리의 미커밋·미푸시 소스 내용(감사가 본 내용)을 "보안 감사 통과"로 기록한다.
 // 이 기록이 있어야 guard-git 훅이 커밋·푸시를 허용한다. 처음 기록할 때 git 훅 백스톱도 설치한다.
 //
 // 사용법:
@@ -41,6 +41,7 @@ if (args.includes("--pending")) {
 }
 
 let auto = null;
+let snapshot = {};
 if (args.includes("--auto")) {
     const risk = classifyRisk(root);
     if (risk.plan.audit === "full") {
@@ -54,12 +55,13 @@ if (args.includes("--auto")) {
         console.error(`시크릿 자동 스캔에 걸려 자동으로 기록할 수 없습니다. 파일을 열어 확인하고 security:audit로 감사하세요.\n${secrets.join("\n")}`);
         process.exit(3);
     }
+    snapshot = { tree: risk.tree, base: risk.base };
     auto = `risk:${risk.effective} + 시크릿 스캔 통과`;
 }
 
 let changes;
 try {
-    changes = markAudited(root, { reason, auto });
+    changes = markAudited(root, { reason, auto, ...snapshot });
 } catch (error) {
     console.error(error.message);
     process.exit(2);

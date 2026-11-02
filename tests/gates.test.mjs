@@ -101,7 +101,7 @@ for (const gate of GATES) {
         test("문서·에셋만 바뀐 커밋은 막지 않는다", () => {
             const repo = makeRepo();
             repo.write("README.md", "# doc\n");
-            repo.write("assets/logo.svg", "<svg/>\n");
+            repo.write("assets/logo.png", "png");
             assert.equal(runHook(gate, repo.root, "git add -A && git commit -m docs").decision, "allow");
         });
 

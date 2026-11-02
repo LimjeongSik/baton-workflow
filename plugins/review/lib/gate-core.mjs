@@ -3,11 +3,12 @@
 // 정본은 저장소 루트의 shared/gate-core.mjs다. 플러그인은 따로 설치되므로 review·security·git 플러그인의 lib/에
 // 같은 파일을 복사해 둔다. 고칠 때는 정본을 고치고 `node scripts/sync-shared.mjs`로 복사한다 (테스트가 어긋남을 잡는다).
 //
-// 통과 기록은 파일 내용(blob 해시) 단위다. 기록 뒤에 파일이 바뀌면 다시 검사 대상이 되지만,
-// 공백·줄바꿈만 바뀐 경우(공백이 의미를 갖는 언어 제외)는 이전 통과를 이어받는다.
+// 통과 기록은 파일 내용(blob 해시) 단위다. 기록 뒤에 파일이 바뀌면 공백만 바뀌었어도 다시 검사 대상이 된다
+// (문자열·주석·문법을 모르는 공백 비교는 "a b" → "a  b", `return\n42` → `return 42`도 같다고 보기 때문이다).
+// 통과로 기록하는 것은 검사가 실제로 본 내용, 곧 작업 트리 스냅샷뿐이다. 그와 다른 staged 내용은 기록하지 않는다.
 
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -15,7 +16,6 @@ export const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 export const DELETED = "-";
 const STATE_VERSION = 2;
 const MAX_HASHES_PER_FILE = 20;
-const MAX_COMPARE_BYTES = 1024 * 1024;
 
 // ─── git ────────────────────────────────────────────────────────────────────
 
@@ -56,10 +56,10 @@ export function hasHead(root) {
 
 // ─── 소스 판정 ──────────────────────────────────────────────────────────────
 
-// 검사 대상이 아닌 파일: 문서, 에셋, lockfile, 도구 설정
+// 검사 대상이 아닌 파일: 문서, 에셋, lockfile. 실행 코드가 들어갈 수 있는 .mdx(JSX)·.svg(script)는 검사한다.
 const NON_SOURCE_EXTENSIONS = new Set([
-    ".md", ".mdx", ".markdown", ".txt", ".rst", ".adoc",
-    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico", ".svg", ".bmp", ".heic",
+    ".md", ".markdown", ".txt", ".rst", ".adoc",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".avif", ".ico", ".bmp", ".heic",
     ".ttf", ".otf", ".woff", ".woff2", ".eot",
     ".mp3", ".mp4", ".mov", ".wav", ".webm", ".pdf", ".zip",
 ]);
@@ -68,12 +68,12 @@ const NON_SOURCE_FILES = new Set([
     "package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "bun.lockb", "Cargo.lock", "poetry.lock",
     "uv.lock", "Gemfile.lock", "composer.lock", "go.sum", "Podfile.lock",
 ]);
-const NON_SOURCE_PREFIXES = [".claude/", ".design/", ".github/ISSUE_TEMPLATE/"];
-
-// 공백·들여쓰기가 의미를 갖는 파일: 공백만 바뀌어도 통과를 이어받지 않는다
-const WHITESPACE_SENSITIVE = /(\.(py|pyi|yaml|yml|mk|haml|pug|jade|sass|styl|coffee|nim|slim|tsv)|(^|\/)(Makefile|GNUmakefile|Dockerfile))$/i;
+const NON_SOURCE_PREFIXES = [".design/", ".github/ISSUE_TEMPLATE/"];
+// 확장자가 문서여도 에이전트의 동작을 정의하는 파일: .claude/ 아래 전부(훅 설정·스크립트·명령), 스킬·에이전트·명령·훅 정의
+const BEHAVIOR_DEFINITION = /(^|\/)\.claude\/|(^|\/)(skills|agents|commands|hooks)\/.+\.(md|markdown)$/;
 
 export function isSource(relPath) {
+    if (BEHAVIOR_DEFINITION.test(relPath)) return true;
     if (NON_SOURCE_PREFIXES.some((prefix) => relPath.startsWith(prefix))) return false;
     const base = path.basename(relPath);
     if (NON_SOURCE_FILES.has(base)) return false;
@@ -82,9 +82,9 @@ export function isSource(relPath) {
 
 // ─── 변경 수집 ──────────────────────────────────────────────────────────────
 
-function worktreeHash(root, relPath, { write = false } = {}) {
+function worktreeHash(root, relPath) {
     if (!existsSync(path.join(root, relPath))) return DELETED;
-    return write ? git(root, "hash-object", "-w", "--", relPath) : git(root, "hash-object", "--", relPath);
+    return git(root, "hash-object", "--", relPath);
 }
 
 // name-status 한 줄을 { path, deleted }로. rename(R)·copy(C)는 새 경로와 함께 옛 경로의 삭제로 본다.
@@ -104,8 +104,7 @@ function parseNameStatus(output) {
 }
 
 // 아직 커밋되지 않은 소스 변경: 커밋에 담길 수 있는 모든 내용 (index와 작업 트리 양쪽)
-// write를 주면 작업 트리 내용을 object로 저장해, 나중에 공백 비교와 리뷰 델타에 쓸 수 있게 한다.
-export function pendingChanges(root, { write = false } = {}) {
+export function pendingChanges(root) {
     const base = hasHead(root) ? "HEAD" : EMPTY_TREE;
     const changes = [];
 
@@ -123,7 +122,7 @@ export function pendingChanges(root, { write = false } = {}) {
     ]);
     for (const relPath of worktreePaths) {
         if (!isSource(relPath)) continue;
-        changes.push({ path: relPath, hash: worktreeHash(root, relPath, { write }), where: "worktree", untracked: untracked.has(relPath) });
+        changes.push({ path: relPath, hash: worktreeHash(root, relPath), where: "worktree", untracked: untracked.has(relPath) });
     }
     return dedupe(changes);
 }
@@ -173,51 +172,6 @@ export function describe(changes, limit = 8) {
     return names.slice(0, limit).join(", ") + (names.length > limit ? ` 외 ${names.length - limit}개` : "");
 }
 
-// ─── 공백만 바뀐 변경 ───────────────────────────────────────────────────────
-
-// 공백 덩어리를 하나로 줄이고, 단어 사이가 아닌 공백은 지운다. `return x`와 `returnx`는 다르게 남는다.
-function normalizeWhitespace(text) {
-    return text.replace(/\s+/g, " ").replace(/ (?=\W)|(?<=\W) /g, "").trim();
-}
-
-function readBlob(root, hash) {
-    if (!hash || hash === DELETED) return null;
-    try {
-        const size = Number(git(root, "cat-file", "-s", hash));
-        if (size > MAX_COMPARE_BYTES) return null;
-        return gitWith(root, ["cat-file", "blob", hash]);
-    } catch {
-        return null;
-    }
-}
-
-function currentContent(root, change) {
-    if (change.hash === DELETED) return null;
-    if (change.where === "worktree") {
-        try {
-            const file = path.join(root, change.path);
-            if (statSync(file).size > MAX_COMPARE_BYTES) return null;
-            return readFileSync(file, "utf8").trimEnd();
-        } catch {
-            return null;
-        }
-    }
-    return readBlob(root, change.hash);
-}
-
-// 통과한 내용 중 하나와 공백만 다르면 그 해시를 돌려준다
-function whitespaceOnlyMatch(root, change, passedHashes) {
-    if (WHITESPACE_SENSITIVE.test(change.path) || passedHashes.length === 0) return null;
-    const current = currentContent(root, change);
-    if (current === null) return null;
-    const normalized = normalizeWhitespace(current);
-    for (const hash of [...passedHashes].reverse()) {
-        const previous = readBlob(root, hash);
-        if (previous !== null && normalizeWhitespace(previous) === normalized) return hash;
-    }
-    return null;
-}
-
 // ─── 통과 기록 저장소 ───────────────────────────────────────────────────────
 
 // dir: <git-dir> 아래 폴더 이름, file: 기록 파일 이름, ref: 기준점 ref (없어도 된다)
@@ -248,10 +202,7 @@ export function createStore({ dir: dirName, file: fileName, ref = null }) {
         writeFileSync(file, `${JSON.stringify({ ...state, version: STATE_VERSION }, null, 2)}\n`);
     };
 
-    const isPassed = (root, change, files = load(root).files) => {
-        const passed = files[change.path] ?? [];
-        return passed.includes(change.hash) || whitespaceOnlyMatch(root, change, passed) !== null;
-    };
+    const isPassed = (root, change, files = load(root).files) => (files[change.path] ?? []).includes(change.hash);
 
     return {
         ref,
@@ -260,15 +211,17 @@ export function createStore({ dir: dirName, file: fileName, ref = null }) {
         hasHistory(root) {
             return existsSync(stateFile(root).file) || (ref !== null && tryGit(root, "rev-parse", "-q", "--verify", ref) !== null);
         },
-        // 통과 기록이 없는 변경만 남긴다. 공백만 바뀐 변경은 이전 통과를 이어받는다.
+        // 통과 기록이 없는 변경만 남긴다
         unchecked(root, changes) {
             const { files } = load(root);
             return changes.filter((change) => !isPassed(root, change, files));
         },
-        // 지금 시점의 미커밋·미푸시 소스 내용을 통과로 기록한다. ref가 있으면 HEAD로 옮긴다.
-        mark(root, { reason = null, logFile = null, auto = null } = {}) {
+        // 검사가 본 내용(작업 트리 스냅샷에서 원격 이후 바뀐 소스)만 통과로 기록한다. ref가 있으면 HEAD로 옮긴다.
+        // 작업 트리와 다른 staged 내용이나 커밋 안의 중간 내용은 검사가 보지 않았으므로 기록하지 않는다.
+        // tree·base를 넘기면 그 스냅샷을 그대로 쓴다 (위험도를 판정한 스냅샷과 같은 내용을 기록하도록).
+        mark(root, { reason = null, logFile = null, auto = null, tree, base } = {}) {
             const state = load(root);
-            const changes = [...pendingChanges(root, { write: true }), ...unpushedChanges(root)];
+            const changes = snapshotChanges(root, { tree, base });
             for (const change of changes) {
                 const hashes = state.files[change.path] ?? [];
                 if (!hashes.includes(change.hash)) hashes.push(change.hash);
@@ -481,17 +434,17 @@ export function findGitCalls(cmd, startDir, depth = 0) {
     return { calls, unparsed };
 }
 
-// 이번 커밋에 실제로 담길 수 있는 변경만 고른다: index는 항상, 작업 트리는 add/commit 인자가 가리키는 것만
+// 이번 커밋에 실제로 담길 수 있는 변경만 고른다: 작업 트리는 add/commit 인자가 가리키는 것만,
+// index는 그 작업 트리 내용으로 덮이지 않는 것만 (git add로 덮일 옛 staged 내용은 커밋에 담기지 않는다).
 // root는 git이 돌려준 실제 경로이므로, callDir도 실제 경로로 바꿔야 상대 경로가 맞는다 (/var → /private/var 같은 심볼릭 링크).
 export function commitCandidates(changes, staged, callDir, root) {
     const prefix = path.relative(root, realpathOr(callDir));
     const targets = staged.paths.map((p) => path.normalize(path.join(prefix, p)));
     const matches = (file) => targets.some((t) => t === "." || file === t || file.startsWith(`${t}/`));
-    return changes.filter((change) => {
-        if (change.where === "staged") return true;
-        if (staged.all && !(staged.trackedOnly && change.untracked)) return true;
-        return matches(change.path); // commit -a라도 git add로 직접 지정한 새 파일은 담긴다
-    });
+    const included = (change) =>
+        (staged.all && !(staged.trackedOnly && change.untracked)) || matches(change.path); // commit -a라도 git add로 직접 지정한 새 파일은 담긴다
+    const overwritten = new Set(changes.filter((change) => change.where !== "staged" && included(change)).map((change) => change.path));
+    return changes.filter((change) => (change.where === "staged" ? !overwritten.has(change.path) : included(change)));
 }
 
 export function inProgressOperation(root) {
@@ -650,6 +603,17 @@ export function shipBase(root) {
     return unpushedBase(root) ?? (hasHead(root) ? git(root, "rev-parse", "HEAD") : EMPTY_TREE);
 }
 
+// 스냅샷(tree)이 base에서 바꾼 소스 파일과 그 스냅샷 시점 내용. 리뷰 델타·감사·통과 기록이 모두 이 목록을 본다.
+export function snapshotChanges(root, { tree = snapshotTree(root), base = shipBase(root) } = {}) {
+    const changes = [];
+    for (const entry of parseNameStatus(git(root, "diff", "--name-status", "--no-renames", base, tree))) {
+        if (!isSource(entry.path)) continue;
+        const hash = entry.deleted ? DELETED : git(root, "rev-parse", `${tree}:${entry.path}`);
+        changes.push({ path: entry.path, hash, where: "snapshot" });
+    }
+    return changes;
+}
+
 function addedLines(root, base, tree, paths) {
     if (paths.length === 0) return [];
     const diff = git(root, "diff", "--no-color", "--no-ext-diff", "-U0", base, tree, "--", ...paths);
@@ -749,7 +713,7 @@ function treeEntry(root, tree, file) {
 // 아직 통과하지 않은 내용만 diff로 보이는 두 커밋을 만든다.
 // - reviewed(R): 지금 작업 트리에서, 통과하지 않은 소스 파일만 마지막 통과 내용(없으면 base 내용)으로 되돌린 상태
 // - current(C): 지금 작업 트리 그대로. 부모가 R이라서 `R..C`가 곧 리뷰할 델타다.
-// 이미 통과한 파일, 문서·에셋, 공백만 바뀐 파일은 델타에 나오지 않는다.
+// 이미 통과한 파일과 문서·에셋은 델타에 나오지 않는다.
 export function buildDelta(root, store, { tree = snapshotTree(root), base = shipBase(root) } = {}) {
     const { files: passed } = store.load(root);
     const changed = lines(git(root, "diff", "--name-only", "--no-renames", base, tree)).filter(isSource);

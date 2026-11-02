@@ -4,7 +4,7 @@
 # 사용법:
 #   bash run-codex.sh [adversarial-review|review] [--full] [옵션...] [포커스 텍스트]
 #
-# 범위를 주지 않으면 아직 리뷰하지 않은 내용만 리뷰한다 (delta.mjs). 이미 리뷰한 파일·줄과 공백만 바뀐 파일은 빠진다.
+# 범위를 주지 않으면 아직 리뷰하지 않은 내용만 리뷰한다 (delta.mjs). 이미 리뷰한 파일·줄은 빠진다.
 # 리뷰할 내용이 없으면 codex를 부르지 않고 끝낸다.
 # 모드를 주지 않으면 위험도로 고른다: 민감한 변경은 adversarial-review, 그 외는 review.
 # --full을 주면 예전처럼 작업 트리 전체(없으면 마지막 리뷰 지점..HEAD)를 리뷰한다. --base나 --scope를 직접 주면 그 값을 우선한다.
@@ -93,7 +93,7 @@ if [[ "${HAS_TARGET}" -eq 0 && "${FULL}" -eq 0 ]]; then
         done <<< "${DELTA}"
         echo "위험도: ${RISK:-알 수 없음}" >&2
         if [[ "${EMPTY:-0}" == "1" ]]; then
-            echo "리뷰할 새 변경이 없습니다. 모든 소스 변경이 이미 리뷰를 통과했거나 공백만 바뀌었습니다. codex를 부르지 않습니다."
+            echo "리뷰할 새 변경이 없습니다. 모든 소스 변경이 이미 리뷰를 통과했습니다. codex를 부르지 않습니다."
             exit 0
         fi
         MODE="${MODE:-${RISK_MODE:-adversarial-review}}"
