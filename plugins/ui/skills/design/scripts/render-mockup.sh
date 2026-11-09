@@ -1,28 +1,33 @@
 #!/usr/bin/env bash
-# 목업 HTML을 PNG로 렌더링한다.
+# 목업 HTML(또는 레퍼런스 웹페이지 URL)을 PNG로 렌더링한다.
 #
 # 사용법:
-#   bash render-mockup.sh <mockup.html> <out.png> [너비=1440] [높이=900]
+#   bash render-mockup.sh <mockup.html | https://...> <out.png> [너비=1440] [높이=900]
 #
 # 전체 페이지를 찍는다 (높이는 첫 화면 기준 뷰포트). 모바일은 390 844를 넘긴다.
 # Chrome 계열 브라우저를 먼저 찾고, 없으면 Playwright CLI를 쓴다.
 set -euo pipefail
 
 if [[ $# -lt 2 ]]; then
-    echo "사용법: bash render-mockup.sh <mockup.html> <out.png> [너비] [높이]" >&2
+    echo "사용법: bash render-mockup.sh <mockup.html | https://...> <out.png> [너비] [높이]" >&2
     exit 2
 fi
 
-HTML="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
 OUT="$2"
 WIDTH="${3:-1440}"
 HEIGHT="${4:-900}"
 mkdir -p "$(dirname "${OUT}")"
 OUT="$(cd "$(dirname "${OUT}")" && pwd)/$(basename "${OUT}")"
 
-if [[ ! -f "${HTML}" ]]; then
-    echo "목업 파일이 없습니다: ${HTML}" >&2
-    exit 2
+if [[ "$1" =~ ^https?:// ]]; then
+    TARGET="$1"
+else
+    HTML="$(cd "$(dirname "$1")" && pwd)/$(basename "$1")"
+    if [[ ! -f "${HTML}" ]]; then
+        echo "목업 파일이 없습니다: ${HTML}" >&2
+        exit 2
+    fi
+    TARGET="file://${HTML}"
 fi
 
 # 1) Playwright: 전체 페이지 캡처와 웹폰트 대기가 확실하다.
@@ -32,7 +37,7 @@ shoot() {
         --viewport-size="${WIDTH},${HEIGHT}" \
         --full-page \
         --wait-for-timeout=1200 \
-        "file://${HTML}" "${OUT}" >/dev/null 2>&1
+        "${TARGET}" "${OUT}" >/dev/null 2>&1
 }
 if command -v npx >/dev/null 2>&1; then
     if shoot npx --no-install playwright || shoot npx -y playwright@latest; then
@@ -62,7 +67,7 @@ for bin in "${CANDIDATES[@]}"; do
         "${bin}" --headless=new --disable-gpu --hide-scrollbars \
             --virtual-time-budget=3000 \
             --window-size="${WIDTH},${HEIGHT}" \
-            --screenshot="${OUT}" "file://${HTML}" >/dev/null 2>&1
+            --screenshot="${OUT}" "${TARGET}" >/dev/null 2>&1
         if [[ -f "${OUT}" ]]; then
             echo "${OUT}"
             exit 0
