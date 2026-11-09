@@ -5,8 +5,10 @@
 #   bash render-mockup.sh <mockup.html | https://...> <out.png> [너비=1440] [높이=900]
 #
 # stdout 첫 줄: 저장한 PNG 경로. 둘째 줄: 캡처 범위("전체 페이지" 또는 "뷰포트 WxH만").
-# Playwright가 있으면 웹폰트·이미지 로딩을 기다려 전체 페이지를 찍는다.
-# 없으면 Chrome 계열 브라우저로 뷰포트 크기만 찍는다. 긴 페이지는 높이를 크게 넘긴다.
+# 셋째 줄부터: "경고: ..." (제한 시간 안에 끝나지 않은 웹폰트·이미지, 로딩에 실패한 이미지)
+# Playwright가 있으면 웹폰트·이미지 로딩을 최대 8초 기다려 전체 페이지를 찍는다.
+# 없으면 Chrome 계열 브라우저로 뷰포트 크기만 찍는다. 이때는 아래가 잘렸는지 PNG에서 직접 확인한다.
+# Chrome은 500px보다 좁은 폭을 바르게 그리지 못해서, 모바일 폭은 Playwright가 없으면 실패한다.
 # 새로 찍는 데 성공했을 때만 <out.png>를 교체한다. 실패하면 예전 파일을 그대로 두고 종료 코드 127을 낸다.
 set -euo pipefail
 
@@ -35,7 +37,8 @@ fi
 
 TMP="${OUT%.png}.rendering-$$.png"
 LOG="$(mktemp "${TMPDIR:-/tmp}/render-mockup.XXXXXX")"
-trap 'rm -f "${TMP}" "${LOG}"' EXIT
+LAST="$(mktemp "${TMPDIR:-/tmp}/render-mockup.XXXXXX")"
+trap 'rm -f "${TMP}" "${LOG}" "${LAST}"' EXIT
 
 # 임시 파일에 새로 찍혔는지로 성공을 판단한다. 예전 <out.png>가 남아 있어도 성공으로 보지 않는다.
 done_with() {
@@ -43,6 +46,7 @@ done_with() {
         mv -f "${TMP}" "${OUT}"
         echo "${OUT}"
         echo "$1"
+        sed -n 's/^WARN: /경고: /p' "${LAST}"
         exit 0
     fi
 }
@@ -52,7 +56,8 @@ attempt() {
     shift
     echo "== ${label}" >>"${LOG}"
     rm -f "${TMP}"
-    "$@" >>"${LOG}" 2>&1 || true
+    "$@" >"${LAST}" 2>&1 || true
+    cat "${LAST}" >>"${LOG}"
 }
 
 # 1) Playwright: 프로젝트에 설치된 버전을 먼저 쓰고, 없으면 최신 버전을 받아 쓴다.
@@ -79,6 +84,12 @@ if command -v npx >/dev/null 2>&1; then
 fi
 
 # 2) Chrome 계열 브라우저: 뷰포트 크기만 찍는다.
+#    헤드리스 Chrome은 창 폭이 500px보다 좁아도 500px로 배치하고 이미지만 잘라 내서,
+#    모바일 폭에서는 오른쪽이 잘린 틀린 그림이 나온다. 그 폭에서는 쓰지 않고 실패로 끝낸다.
+if (( WIDTH < 500 )); then
+    echo "== Chrome 대체 경로 건너뜀: 헤드리스 Chrome은 ${WIDTH}px 폭을 500px로 배치해서 모바일 렌더링이 틀린다. Playwright가 필요하다" >>"${LOG}"
+    CANDIDATES=()
+else
 CANDIDATES=(
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
     "/Applications/Chromium.app/Contents/MacOS/Chromium"
@@ -88,13 +99,14 @@ CANDIDATES=(
     "$(command -v chromium 2>/dev/null || true)"
     "$(command -v chromium-browser 2>/dev/null || true)"
 )
-for bin in "${CANDIDATES[@]}"; do
+fi
+for bin in "${CANDIDATES[@]+"${CANDIDATES[@]}"}"; do
     if [[ -n "${bin}" && -x "${bin}" ]]; then
         attempt "${bin}" "${bin}" --headless=new --disable-gpu --hide-scrollbars \
             --virtual-time-budget=5000 \
             --window-size="${WIDTH},${HEIGHT}" \
             --screenshot="${TMP}" "${TARGET}"
-        done_with "뷰포트 ${WIDTH}x${HEIGHT}만 (아래로 넘친 내용은 찍히지 않음)"
+        done_with "뷰포트 ${WIDTH}x${HEIGHT}만 (아래로 넘친 내용은 찍히지 않음. 잘렸는지 PNG에서 확인)"
     fi
 done
 

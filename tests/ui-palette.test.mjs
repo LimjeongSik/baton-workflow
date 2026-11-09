@@ -1,5 +1,5 @@
 // ui 플러그인의 palette-check.mjs 테스트.
-// 역할별 대비 조합 검사, 스타일 경고와 대비 실패의 구분, 종료 코드를 확인한다.
+// 역할별 대비 조합 검사, 스타일 경고와 대비 실패의 구분, 최소 수정안, 종료 코드(0 통과·1 대비 실패·2 입력 오류)를 확인한다.
 
 import { spawnSync } from "node:child_process";
 import path from "node:path";
@@ -10,7 +10,7 @@ const CHECK = path.resolve(import.meta.dirname, "../plugins/ui/skills/design/scr
 
 const run = (...args) => {
     const r = spawnSync(process.execPath, [CHECK, ...args], { encoding: "utf8" });
-    return { code: r.status, out: r.stdout };
+    return { code: r.status, out: r.stdout, err: r.stderr };
 };
 
 describe("palette-check", () => {
@@ -46,10 +46,27 @@ describe("palette-check", () => {
         assert.match(out, /✖ 본문/);
     });
 
-    test("형식이 틀린 조합은 대비 실패로 센다", () => {
-        const { code, out } = run("--text", "white on green");
-        assert.equal(code, 1);
-        assert.match(out, /형식이 아니다/);
+    test("입력 오류는 검사하지 않고 2로 끝난다", () => {
+        for (const args of [
+            ["--bg", "invalid", "--fg", "#111111"],
+            ["--bg"],
+            ["--bg", "#FFFFFF", "--fg"],
+            ["--bg", "--fg", "#111111"],
+            ["--foo", "#FFFFFF"],
+            ["#zzz"],
+            ["--text", "white on green"],
+        ]) {
+            const { code, out } = run(...args);
+            assert.equal(code, 2, args.join(" "));
+            assert.equal(out, "", args.join(" "));
+        }
+    });
+
+    test("대비 실패에 명도만 조정한 최소 수정안을 붙인다", () => {
+        const { out } = run("--text", "#9AA39D/#FFFFFF=보조");
+        const fix = /최소 수정안: 앞쪽 색 #9AA39D → (#[0-9A-F]{6})/.exec(out);
+        assert.ok(fix, out);
+        assert.equal(run("--text", `${fix[1]}/#FFFFFF=보조`).code, 0);
     });
 
     test("순백 배경은 Tailwind 경고를 내지 않는다", () => {
