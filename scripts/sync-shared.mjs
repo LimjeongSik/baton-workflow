@@ -6,12 +6,13 @@
 //   node scripts/sync-shared.mjs          # 복사
 //   node scripts/sync-shared.mjs --check  # 어긋난 복사본이 있으면 실패 (테스트·CI용)
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 export const TARGETS = {
     "gate-core.mjs": ["plugins/review/lib", "plugins/security/lib", "plugins/git/lib", "plugins/progress/lib"],
+    "testing-rules.md": ["plugins/feature/skills/build/references", "plugins/test/skills/write/references"],
 };
 
 const check = process.argv.includes("--check");
@@ -23,7 +24,10 @@ for (const [file, dirs] of Object.entries(TARGETS)) {
         const current = existsSync(target) ? readFileSync(target, "utf8") : null;
         if (current === source) continue;
         if (check) stale.push(path.relative(ROOT, target));
-        else writeFileSync(target, source);
+        else {
+            mkdirSync(path.dirname(target), { recursive: true });
+            writeFileSync(target, source);
+        }
     }
 }
 if (stale.length) {
