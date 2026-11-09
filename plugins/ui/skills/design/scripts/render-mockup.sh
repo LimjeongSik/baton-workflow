@@ -4,8 +4,10 @@
 # 사용법:
 #   bash render-mockup.sh <mockup.html | https://...> <out.png> [너비=1440] [높이=900]
 #
-# 전체 페이지를 찍는다 (높이는 첫 화면 기준 뷰포트). 모바일은 390 844를 넘긴다.
-# Chrome 계열 브라우저를 먼저 찾고, 없으면 Playwright CLI를 쓴다.
+# stdout 첫 줄: 저장한 PNG 경로. 둘째 줄: 캡처 범위("전체 페이지" 또는 "뷰포트 WxH만").
+# Playwright가 있으면 웹폰트·이미지 로딩을 기다려 전체 페이지를 찍는다.
+# 없으면 Chrome 계열 브라우저로 뷰포트 크기만 찍는다. 긴 페이지는 높이를 크게 넘긴다.
+# 새로 찍는 데 성공했을 때만 <out.png>를 교체한다. 실패하면 예전 파일을 그대로 두고 종료 코드 127을 낸다.
 set -euo pipefail
 
 if [[ $# -lt 2 ]]; then
@@ -13,6 +15,7 @@ if [[ $# -lt 2 ]]; then
     exit 2
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT="$2"
 WIDTH="${3:-1440}"
 HEIGHT="${4:-900}"
@@ -30,29 +33,52 @@ else
     TARGET="file://${HTML}"
 fi
 
-# 1) Playwright: 전체 페이지 캡처와 웹폰트 대기가 확실하다.
-#    프로젝트에 설치된 버전을 먼저 쓰고, 없으면 최신 버전을 쓴다.
-shoot() {
-    "$@" screenshot \
-        --viewport-size="${WIDTH},${HEIGHT}" \
-        --full-page \
-        --wait-for-timeout=1200 \
-        "${TARGET}" "${OUT}" >/dev/null 2>&1
-}
-if command -v npx >/dev/null 2>&1; then
-    if shoot npx --no-install playwright || shoot npx -y playwright@latest; then
+TMP="${OUT%.png}.rendering-$$.png"
+LOG="$(mktemp "${TMPDIR:-/tmp}/render-mockup.XXXXXX")"
+trap 'rm -f "${TMP}" "${LOG}"' EXIT
+
+# 임시 파일에 새로 찍혔는지로 성공을 판단한다. 예전 <out.png>가 남아 있어도 성공으로 보지 않는다.
+done_with() {
+    if [[ -s "${TMP}" ]]; then
+        mv -f "${TMP}" "${OUT}"
         echo "${OUT}"
+        echo "$1"
         exit 0
     fi
-    # 브라우저 바이너리가 없어서 실패했을 수 있다. 헤드리스 셸만 한 번 받고 다시 시도한다.
-    echo "Playwright 브라우저를 내려받습니다 (최초 1회)..." >&2
-    if npx -y playwright@latest install chromium-headless-shell >/dev/null 2>&1 && shoot npx -y playwright@latest; then
-        echo "${OUT}"
-        exit 0
+}
+
+attempt() {
+    local label="$1"
+    shift
+    echo "== ${label}" >>"${LOG}"
+    rm -f "${TMP}"
+    "$@" >>"${LOG}" 2>&1 || true
+}
+
+# 1) Playwright: 프로젝트에 설치된 버전을 먼저 쓰고, 없으면 최신 버전을 받아 쓴다.
+if command -v node >/dev/null 2>&1; then
+    LOCAL_PW="$(node -e 'try{console.log(require.resolve("playwright"))}catch{}' 2>/dev/null || true)"
+    if [[ -n "${LOCAL_PW}" ]]; then
+        attempt "프로젝트 Playwright" node "${SCRIPT_DIR}/shoot.cjs" "${LOCAL_PW}" "${TARGET}" "${TMP}" "${WIDTH}" "${HEIGHT}"
+        done_with "전체 페이지"
+    fi
+fi
+if command -v npx >/dev/null 2>&1; then
+    # npx 캐시에 받은 playwright 패키지 경로를 찾아 shoot.cjs에 넘긴다.
+    export SHOOT_JS="${SCRIPT_DIR}/shoot.cjs" SHOOT_TARGET="${TARGET}" SHOOT_OUT="${TMP}" SHOOT_W="${WIDTH}" SHOOT_H="${HEIGHT}"
+    PW_SHOOT='node "$SHOOT_JS" "$(dirname "$(command -v playwright)")/../playwright" "$SHOOT_TARGET" "$SHOOT_OUT" "$SHOOT_W" "$SHOOT_H"'
+    attempt "playwright@latest" npx -y -p playwright@latest -c "${PW_SHOOT}"
+    done_with "전체 페이지"
+    # 브라우저 바이너리가 없어서 실패했으면 헤드리스 셸만 한 번 받고 다시 시도한다.
+    if grep -q "Executable doesn't exist\|playwright install" "${LOG}"; then
+        echo "Playwright 브라우저를 내려받습니다 (최초 1회)..." >&2
+        attempt "브라우저 설치" npx -y playwright@latest install chromium-headless-shell
+        attempt "playwright@latest (설치 후)" npx -y -p playwright@latest -c "${PW_SHOOT}"
+        done_with "전체 페이지"
     fi
 fi
 
-# 2) Chrome 계열 브라우저: 뷰포트 크기만 찍는다. 긴 페이지는 높이를 크게 넘긴다.
+# 2) Chrome 계열 브라우저: 뷰포트 크기만 찍는다.
 CANDIDATES=(
     "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
     "/Applications/Chromium.app/Contents/MacOS/Chromium"
@@ -64,16 +90,15 @@ CANDIDATES=(
 )
 for bin in "${CANDIDATES[@]}"; do
     if [[ -n "${bin}" && -x "${bin}" ]]; then
-        "${bin}" --headless=new --disable-gpu --hide-scrollbars \
-            --virtual-time-budget=3000 \
+        attempt "${bin}" "${bin}" --headless=new --disable-gpu --hide-scrollbars \
+            --virtual-time-budget=5000 \
             --window-size="${WIDTH},${HEIGHT}" \
-            --screenshot="${OUT}" "${TARGET}" >/dev/null 2>&1
-        if [[ -f "${OUT}" ]]; then
-            echo "${OUT}"
-            exit 0
-        fi
+            --screenshot="${TMP}" "${TARGET}"
+        done_with "뷰포트 ${WIDTH}x${HEIGHT}만 (아래로 넘친 내용은 찍히지 않음)"
     fi
 done
 
-echo "렌더링할 브라우저를 찾지 못했습니다. 'npx playwright install chromium' 후 다시 실행하세요." >&2
+echo "렌더링에 실패했습니다. 브라우저가 없으면 'npx playwright install chromium' 후 다시 실행하세요. 시도한 순서와 오류:" >&2
+grep -E "^== |Error|ERR_|Executable|not found|No such|Timeout" "${LOG}" \
+    | grep -v "cv_display_link\|task_policy_set" | tail -n 20 >&2
 exit 127

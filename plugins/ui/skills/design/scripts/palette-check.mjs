@@ -1,11 +1,21 @@
 #!/usr/bin/env node
-// 디자인 계획의 팔레트에서 "AI가 만든 티"가 나는 기본값 패턴과 대비 문제를 찾는다.
+// 디자인 계획의 팔레트에서 "AI가 만든 티"가 나는 기본값 패턴(스타일 경고)과
+// 실제로 쓰는 색 조합의 대비 실패를 찾는다.
 //
 // 사용법:
-//   node palette-check.mjs --bg "#F2F4F0" --fg "#1F2421" "#2F6B4F" "#E8B04B" ...
+//   node palette-check.mjs --bg "#F2F4F0" --fg "#1F2421" "#2F6B4F" "#E8B04B" \
+//     --text "#FFFFFF/#2F6B4F=주요 버튼 글자" \
+//     --text "#5A635D/#FFFFFF=카드 보조 텍스트" \
+//     --large "#2F6B4F/#F2F4F0=페이지 제목" \
+//     --ui "#C9D1C5/#FFFFFF=입력창 테두리"
 //
-// --bg: 주 배경, --fg: 본문 글자색, 나머지: 강조·보조색.
-// 경고는 금지가 아니다. 근거가 있으면 유지하고, 근거가 없으면 바꾸라는 신호다.
+// --bg: 주 배경, --fg: 본문 글자색, 나머지 hex: 강조·보조색 (스타일 경고 대상).
+// --text 글자/배경=이름: 본문 크기 글자, WCAG AA 4.5:1
+// --large 글자/배경=이름: 큰 글자(24px 이상, 굵은 19px 이상), 3:1
+// --ui 색/인접색=이름: 테두리·아이콘·포커스 링 같은 UI 요소, 3:1
+//
+// 스타일 경고는 금지가 아니다. 근거가 있으면 유지하고, 근거가 없으면 바꾸라는 신호다.
+// 대비 실패는 고쳐야 한다. 대비 실패가 하나라도 있으면 종료 코드 1이다.
 
 const TAILWIND_DEFAULTS = {
     "#0F172A": "slate-900",
@@ -109,7 +119,9 @@ function inspect(color, role) {
     const { h, s, l } = toHsl(color);
     const warnings = [];
 
-    const tailwind = nearest(color, TAILWIND_DEFAULTS, 2.5);
+    // 순백·순흑은 Tailwind 값이 아니라 그냥 흰색·검정이다.
+    const plain = color.hex === "#FFFFFF" || color.hex === "#000000";
+    const tailwind = plain ? null : nearest(color, TAILWIND_DEFAULTS, 2.5);
     if (tailwind) warnings.push(`Tailwind 기본 팔레트 ${tailwind}와 거의 같다`);
 
     const tell = nearest(color, GENERATED_TELLS, 5);
@@ -138,18 +150,26 @@ function inspect(color, role) {
     return { hsl: `H${Math.round(h)} S${Math.round(s)}% L${Math.round(l)}%`, warnings };
 }
 
+const PAIR_KINDS = {
+    "--text": { min: 4.5, label: "본문 글자" },
+    "--large": { min: 3, label: "큰 글자" },
+    "--ui": { min: 3, label: "UI 요소" },
+};
+
 const args = process.argv.slice(2);
 let bg = null;
 let fg = null;
 const accents = [];
+const pairs = [];
 for (let i = 0; i < args.length; i++) {
     if (args[i] === "--bg") bg = args[++i];
     else if (args[i] === "--fg") fg = args[++i];
+    else if (PAIR_KINDS[args[i]]) pairs.push({ kind: args[i], raw: args[++i] ?? "" });
     else accents.push(args[i]);
 }
 
-if (!bg && !fg && accents.length === 0) {
-    console.error('사용법: node palette-check.mjs --bg "#F2F4F0" --fg "#1F2421" "#2F6B4F" ...');
+if (!bg && !fg && accents.length === 0 && pairs.length === 0) {
+    console.error('사용법: node palette-check.mjs --bg "#F2F4F0" --fg "#1F2421" "#2F6B4F" ... --text "#FFFFFF/#2F6B4F=버튼 글자"');
     process.exit(2);
 }
 
@@ -162,7 +182,9 @@ const entries = [
 const ROLE = { bg: "배경", fg: "본문", accent: "강조·보조" };
 const bgColor = bg ? parseHex(bg) : null;
 let warningCount = 0;
+const contrastFailures = [];
 
+if (entries.length) console.log("[스타일]");
 for (const [role, raw] of entries) {
     const color = parseHex(raw);
     if (!color) {
@@ -178,16 +200,29 @@ for (const [role, raw] of entries) {
     warningCount += warnings.length;
 }
 
-if (bgColor && fg) {
-    const fgColor = parseHex(fg);
-    if (fgColor) {
-        const ratio = contrast(fgColor, bgColor);
-        if (ratio < 4.5) {
-            console.log(`⚠ 본문 대비 ${ratio.toFixed(2)}:1. WCAG AA 본문 기준 4.5:1에 못 미친다`);
-            warningCount++;
-        }
+// 대비는 실제로 겹쳐 쓰는 조합만 검사한다. --bg와 --fg는 본문 조합으로 함께 검사한다.
+const checks = [];
+if (bg && fg) checks.push({ kind: "--text", raw: `${fg}/${bg}=본문` });
+checks.push(...pairs);
+
+if (checks.length) console.log("\n[대비]");
+for (const { kind, raw } of checks) {
+    const m = /^\s*([^/=\s]+)\s*\/\s*([^=\s]+)\s*(?:=(.*))?$/.exec(raw);
+    const a = m && parseHex(m[1]);
+    const b = m && parseHex(m[2]);
+    if (!a || !b) {
+        console.log(`✖ ${kind} "${raw}": "글자색/배경색=이름" 형식이 아니다`);
+        contrastFailures.push(raw);
+        continue;
     }
+    const { min, label } = PAIR_KINDS[kind];
+    const name = m[3]?.trim() || `${a.hex}/${b.hex}`;
+    const ratio = contrast(a, b);
+    const ok = ratio >= min;
+    console.log(`${ok ? "✓" : "✖"} ${name} (${label}) ${a.hex} on ${b.hex}  ${ratio.toFixed(2)}:1 / 기준 ${min}:1`);
+    if (!ok) contrastFailures.push(name);
 }
+
 if (bgColor) {
     for (const raw of accents) {
         const c = parseHex(raw);
@@ -197,4 +232,13 @@ if (bgColor) {
     }
 }
 
-console.log(warningCount === 0 ? "\n경고 없음" : `\n경고 ${warningCount}건. 근거가 있으면 보고에 적고 유지하고, 없으면 바꾼다.`);
+console.log(
+    warningCount === 0
+        ? "\n스타일 경고 없음"
+        : `\n스타일 경고 ${warningCount}건. 근거가 있으면 보고에 적고 유지하고, 없으면 바꾼다.`,
+);
+if (contrastFailures.length) {
+    console.log(`대비 실패 ${contrastFailures.length}건: ${contrastFailures.join(", ")}. 근거와 관계없이 고친다.`);
+    process.exit(1);
+}
+if (checks.length) console.log("대비 실패 없음");
