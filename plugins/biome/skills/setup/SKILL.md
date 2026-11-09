@@ -9,6 +9,8 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash, AskUserQuestion
 
 baton 플러그인은 컨벤션 검사에 Biome을 쓴다. 이 스킬은 Biome을 설치하고, 프로젝트 종류에 맞게 고친 기본 설정을 쓴다. **기존 설정 파일, 다른 도구(ESLint, Prettier), 기존 스크립트는 사용자 동의 없이 지우거나 덮어쓰지 않는다.**
 
+**요청에서 승인된 작업은 묻지 않고 진행한다.** 사용자가 Biome 설치·설정을 요청했으면(`/biome:setup`, "biome 설치해줘") 설치와 새 파일 만들기는 승인된 것이다. 기존 설정 덮어쓰기, 기존 값·스크립트 바꾸기, 코드 전체 포맷처럼 요청 범위를 넘는 선택만 묻는다.
+
 ## 1. 감지
 
 작업할 프로젝트 폴더(가장 가까운 `package.json`이 있는 곳)에서 실행한다.
@@ -49,15 +51,17 @@ node "${CLAUDE_SKILL_DIR}/scripts/setup.mjs"
 
 특정 파일만 규칙을 끄는 `overrides`, 특정 폴더만 빼는 `includes` 항목은 프로젝트마다 다르므로 만들지 않는다. 5단계 검사에서 필요해 보이면 제안만 한다.
 
-## 3. 묻고 설치한다
+## 3. 확인하고 설치한다
 
-**설치하거나 파일을 쓰기 전에 반드시 AskUserQuestion으로 묻는다.** 질문 하나에 감지한 종류와 할 일을 모두 담는다.
+**사용자가 설치·설정을 직접 요청했으면** 이 질문 없이 진행한다. 감지한 종류와 할 일은 보고에 적는다.
+
+**다른 작업 중에 Biome이 없어 이 스킬을 쓰게 됐으면** 설치하거나 파일을 쓰기 전에 AskUserQuestion으로 묻는다. 질문 하나에 감지한 종류와 할 일을 모두 담는다.
 
 - 질문: "`<kind>` 프로젝트로 감지했습니다. Biome을 설치하고 설정 파일을 만들까요?"
 - 선택지: 설치 후 설정 (Recommended) / 설정 파일만 만들기 (이미 설치되어 있을 때) / 하지 않음
 - 설명에 적을 것: 설치할 패키지(`@biomejs/biome`, 버전 고정 `-E`), 만들거나 고칠 파일(`plan`의 각 항목과 action), 추가할 스크립트
 
-아래 경우는 같은 질문에 이어서(별도 질문으로) 묻는다:
+아래 경우는 요청 범위를 넘으므로 어느 경우든 묻는다(위 질문이 있으면 이어서 별도 질문으로):
 - **`biome.existingConfig`가 있으면**: 그대로 둠 (Recommended) / 덮어쓰기(`--force`) / 차이만 보여주기. 덮어쓰면 기존 파일의 `overrides`와 프로젝트 전용 `includes`가 사라진다는 점을 설명에 적는다.
 - **`plan.vscodeSettings.changed`가 비어 있지 않으면**: 그 키들의 기존 값이 바뀐다는 점(예: Prettier → Biome 포맷터)을 적고 진행할지 묻는다.
 - **`plan.scripts.conflicts`가 있으면**: 기존 스크립트(예: `"lint": "next lint"`)를 그대로 둠 (Recommended) / `biome check`로 바꿈 / 뒤에 `&& biome check`를 붙임.
@@ -66,7 +70,7 @@ ESLint·Prettier가 있어도 지우지 않는다. 보고에 남겨 두고, Pret
 
 거절하면 아무것도 바꾸지 않고 끝낸다.
 
-동의하면 `biome.installed`가 없을 때 `project.installCommand`로 설치한다. 실패하면 멈추고 출력을 그대로 보고한다.
+진행하면 `biome.installed`가 없을 때 `project.installCommand`로 설치한다. 실패하면 멈추고 출력을 그대로 보고한다.
 
 ## 4. 파일 쓰기
 
@@ -110,11 +114,11 @@ node "${CLAUDE_SKILL_DIR}/scripts/setup.mjs" --write --force  # 사용자가 덮
 - 남겨 둔 것: ESLint·Prettier 설정, 그대로 둔 스크립트, 건너뛴 파일과 이유
 - VS Code에서 Biome 확장을 설치하라는 안내 (추천 확장 팝업이 뜬다)
 
-**선호 기록:** 사용자가 기본값을 바꾸게 했거나(들여쓰기, 따옴표, 줄 길이, 규칙 수준, import 그룹), 선택지 중 하나를 골랐거나, "앞으로는" 같은 지시를 했고 `prefs:learn` 스킬을 쓸 수 있으면 그 내용을 요약해 넘겨 실행한다. 이 프로젝트에만 해당하는 내용(특정 파일 override)은 넘기지 않는다.
+**선호 기록:** `prefs:learn`의 실행 규칙을 따른다. 최상위 작업이면 마칠 때 한 번 실행하고, 다른 스킬에서 호출됐으면 실행하지 않고 신호만 보고에 넘긴다. 이 작업의 신호 예: 기본값(들여쓰기, 따옴표, 줄 길이, 규칙 수준, import 그룹)을 바꾸게 한 것, 선택지에서 고른 것.
 
 ## 하지 않을 것
 
-- 사용자 동의 없이 설치하거나 설정 파일 쓰기
+- 사용자가 요청하거나 동의하지 않았는데 설치하거나 설정 파일 쓰기
 - 기존 biome.json을 `--force` 선택 없이 덮어쓰기
 - ESLint·Prettier 설정이나 패키지 지우기
 - 동의 없이 `biome check --write`로 코드 전체 바꾸기
