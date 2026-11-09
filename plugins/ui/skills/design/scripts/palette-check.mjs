@@ -15,7 +15,9 @@
 // --ui 색/인접색=이름: 테두리·아이콘·포커스 링 같은 UI 요소, 3:1
 //
 // 스타일 경고는 금지가 아니다. 근거가 있으면 유지하고, 근거가 없으면 바꾸라는 신호다.
-// 대비 실패는 고쳐야 한다. 대비 실패가 하나라도 있으면 종료 코드 1이다.
+// 대비 실패는 고쳐야 한다. 실패한 조합마다 명도만 조정한 최소 수정안을 함께 낸다.
+//
+// 종료 코드: 0 대비 통과(스타일 경고는 있을 수 있음), 1 대비 실패, 2 입력 오류(잘못된 hex·옵션, 빠진 값).
 
 const TAILWIND_DEFAULTS = {
     "#0F172A": "slate-900",
@@ -156,20 +158,75 @@ const PAIR_KINDS = {
     "--ui": { min: 3, label: "UI 요소" },
 };
 
+// 대비 실패한 글자색을 색상·채도는 두고 명도만 가장 적게 바꿔 기준을 넘기는 값. 없으면 null.
+function hslToHex(h, s, l) {
+    const [sn, ln] = [s / 100, l / 100];
+    const k = (n) => (n + h / 30) % 12;
+    const a = sn * Math.min(ln, 1 - ln);
+    const f = (n) => ln - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+    const hex = [f(0), f(8), f(4)].map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join("");
+    return parseHex(hex);
+}
+
+function minimalFix(fgColor, bgColor, min) {
+    const { h, s, l } = toHsl(fgColor);
+    for (let step = 0.5; step <= 100; step += 0.5) {
+        for (const nl of [l - step, l + step]) {
+            if (nl < 0 || nl > 100) continue;
+            const cand = hslToHex(h, s, nl);
+            const ratio = contrast(cand, bgColor);
+            if (ratio >= min) return { hex: cand.hex, ratio };
+        }
+    }
+    return null;
+}
+
+const USAGE = '사용법: node palette-check.mjs --bg "#F2F4F0" --fg "#1F2421" "#2F6B4F" ... --text "#FFFFFF/#2F6B4F=버튼 글자"';
+
+// 종료 코드: 0 검사 통과(스타일 경고는 있을 수 있음), 1 대비 실패, 2 입력 오류.
+// 입력 오류가 하나라도 있으면 아무것도 검사하지 않고 2로 끝낸다. 일부만 검사한 결과가 통과로 읽히지 않게 하려는 것이다.
 const args = process.argv.slice(2);
+const inputErrors = [];
 let bg = null;
 let fg = null;
 const accents = [];
 const pairs = [];
 for (let i = 0; i < args.length; i++) {
-    if (args[i] === "--bg") bg = args[++i];
-    else if (args[i] === "--fg") fg = args[++i];
-    else if (PAIR_KINDS[args[i]]) pairs.push({ kind: args[i], raw: args[++i] ?? "" });
-    else accents.push(args[i]);
+    const arg = args[i];
+    const takesValue = arg === "--bg" || arg === "--fg" || PAIR_KINDS[arg];
+    if (takesValue) {
+        const value = args[i + 1];
+        if (value === undefined || value.startsWith("--")) {
+            inputErrors.push(`${arg} 뒤에 값이 없다`);
+            continue;
+        }
+        i++;
+        if (arg === "--bg") bg = value;
+        else if (arg === "--fg") fg = value;
+        else pairs.push({ kind: arg, raw: value });
+    } else if (arg.startsWith("--")) {
+        inputErrors.push(`알 수 없는 옵션: ${arg}`);
+    } else {
+        accents.push(arg);
+    }
 }
 
+for (const [label, raw] of [["--bg", bg], ["--fg", fg], ...accents.map((c) => ["색", c])]) {
+    if (raw !== null && !parseHex(raw)) inputErrors.push(`${label} "${raw}": hex 형식이 아니다`);
+}
+const PAIR_RE = /^\s*([^/=\s]+)\s*\/\s*([^=\s]+)\s*(?:=(.*))?$/;
+for (const { kind, raw } of pairs) {
+    const m = PAIR_RE.exec(raw);
+    if (!m || !parseHex(m[1]) || !parseHex(m[2])) inputErrors.push(`${kind} "${raw}": "글자색/배경색=이름" 형식이 아니다`);
+}
+
+if (inputErrors.length) {
+    for (const e of inputErrors) console.error(`✖ ${e}`);
+    console.error(USAGE);
+    process.exit(2);
+}
 if (!bg && !fg && accents.length === 0 && pairs.length === 0) {
-    console.error('사용법: node palette-check.mjs --bg "#F2F4F0" --fg "#1F2421" "#2F6B4F" ... --text "#FFFFFF/#2F6B4F=버튼 글자"');
+    console.error(USAGE);
     process.exit(2);
 }
 
@@ -187,11 +244,6 @@ const contrastFailures = [];
 if (entries.length) console.log("[스타일]");
 for (const [role, raw] of entries) {
     const color = parseHex(raw);
-    if (!color) {
-        console.log(`✖ ${raw}: hex 형식이 아니다`);
-        warningCount++;
-        continue;
-    }
     const { hsl, warnings } = inspect(color, role);
     let line = `${warnings.length ? "⚠" : "✓"} ${color.hex} [${ROLE[role]}] ${hsl}`;
     if (bgColor && role !== "bg") line += `  배경 대비 ${contrast(color, bgColor).toFixed(2)}:1`;
@@ -207,26 +259,29 @@ checks.push(...pairs);
 
 if (checks.length) console.log("\n[대비]");
 for (const { kind, raw } of checks) {
-    const m = /^\s*([^/=\s]+)\s*\/\s*([^=\s]+)\s*(?:=(.*))?$/.exec(raw);
-    const a = m && parseHex(m[1]);
-    const b = m && parseHex(m[2]);
-    if (!a || !b) {
-        console.log(`✖ ${kind} "${raw}": "글자색/배경색=이름" 형식이 아니다`);
-        contrastFailures.push(raw);
-        continue;
-    }
+    const m = PAIR_RE.exec(raw);
+    const a = parseHex(m[1]);
+    const b = parseHex(m[2]);
     const { min, label } = PAIR_KINDS[kind];
     const name = m[3]?.trim() || `${a.hex}/${b.hex}`;
     const ratio = contrast(a, b);
     const ok = ratio >= min;
     console.log(`${ok ? "✓" : "✖"} ${name} (${label}) ${a.hex} on ${b.hex}  ${ratio.toFixed(2)}:1 / 기준 ${min}:1`);
-    if (!ok) contrastFailures.push(name);
+    if (!ok) {
+        const fix = minimalFix(a, b, min);
+        console.log(
+            fix
+                ? `    - 최소 수정안: 앞쪽 색 ${a.hex} → ${fix.hex} (HSL 색상·채도 유지, 명도만 조정, ${fix.ratio.toFixed(2)}:1)`
+                : "    - 앞쪽 색의 명도만으로는 기준을 넘길 수 없다. 뒤쪽 색을 함께 바꿔야 한다",
+        );
+        contrastFailures.push(name);
+    }
 }
 
 if (bgColor) {
     for (const raw of accents) {
         const c = parseHex(raw);
-        if (c && contrast(c, bgColor) < 3) {
+        if (contrast(c, bgColor) < 3) {
             console.log(`ℹ ${c.hex}는 배경 대비 3:1 미만이다. 글자나 UI 경계에 쓰면 안 되고, 면 채우기용으로만 쓴다`);
         }
     }
@@ -238,7 +293,7 @@ console.log(
         : `\n스타일 경고 ${warningCount}건. 근거가 있으면 보고에 적고 유지하고, 없으면 바꾼다.`,
 );
 if (contrastFailures.length) {
-    console.log(`대비 실패 ${contrastFailures.length}건: ${contrastFailures.join(", ")}. 근거와 관계없이 고친다.`);
+    console.log(`대비 실패 ${contrastFailures.length}건: ${contrastFailures.join(", ")}. 고친다. 기존 디자인 시스템의 토큰이면 바꾸지 말고 최소 수정안과 함께 보고한다.`);
     process.exit(1);
 }
 if (checks.length) console.log("대비 실패 없음");
