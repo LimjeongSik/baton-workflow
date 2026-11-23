@@ -19,7 +19,7 @@ allowed-tools: Read, Grep, Glob, Bash
 node "${CLAUDE_SKILL_DIR}/../sign-off/scripts/mark-passed.mjs" --pending
 ```
 - `--base <ref>`를 받으면 `<ref>...HEAD`가 대상이다. 경로를 받으면 그 경로만 본다.
-- **A절(저장소에 들어가면 안 되는 것)은 범위와 무관하게 매번 확인한다.** 시크릿은 과거 커밋에 들어가 있어도 지금 사고다.
+- **A절(저장소에 들어가면 안 되는 것)은 범위와 무관하게 매번 확인한다.** 시크릿은 과거 커밋에 들어가 있어도 지금 사고다. A절이 어디까지 봤는지(현재 추적 파일 / 미커밋 변경 / 미푸시 커밋 / 전체 이력)는 보고서에 따로 적는다.
 
 ```bash
 git status --short --untracked-files=all
@@ -42,14 +42,28 @@ git diff HEAD --stat
 git ls-files | grep -iE '(^|/)(\.env($|\.)|.*\.(pem|key|p8|p12|pfx|jks|keystore|mobileprovision)$|id_(rsa|ed25519|ecdsa)$|credentials\.json$|service-account.*\.json$|google-services\.json$|GoogleService-Info\.plist$|\.npmrc$|\.pypirc$|\.netrc$)' | grep -vE '\.(example|sample|template)$'
 ```
 
-**하나라도 나오면 critical이다.** `.gitignore`에 적혀 있어도 이미 추적 중이면 소용없다. `.npmrc`처럼 시크릿이 없을 수도 있는 파일은 열어서 토큰이 있는지 확인한다.
+파일 이름으로 걸린 것은 **확인 후보**다. 이름만으로 심각도를 정하지 않고, 파일을 열어 판정한다.
 
-diff에 실제 값이 박혀 있는지도 본다:
+- 실제 자격 증명·개인 키·토큰 값이 들어 있으면 `critical`로 확정한다. `.gitignore`에 적혀 있어도 이미 추적 중이면 소용없다.
+- 값이 없거나(`.npmrc`에 레지스트리 주소만, 공개용 `google-services.json`의 클라이언트 설정 등) 자리표시자뿐이면 지적하지 않고 "확인했으나 문제 없던 항목"에 근거와 함께 적는다.
+- 열어 볼 수 없거나(바이너리 키스토어 등) 값이 진짜인지 판단할 수 없으면 **지적 표에 넣지 않는다.** 확인하지 못했다는 것은 심각도가 아니라 검증 상태다. 표 아래 "확인 못 한 후보"에 무엇을 왜 확인하지 못했는지, 무엇을 보면 확정되는지 적는다. 문제 없음으로 바꾸지도 않는다.
+
+변경에 실제 값이 박혀 있는지도 본다. 미커밋 변경과, 업스트림이 있으면 미푸시 커밋까지 본다:
 
 ```bash
-git diff HEAD | grep -inE '^\+.*(api[_-]?key|secret|password|passwd|token|authorization|bearer|private[_-]?key|client[_-]?secret|access[_-]?key)\s*["'"'"']?\s*[:=]'
-git diff HEAD | grep -nE '^\+.*(AKIA[0-9A-Z]{16}|sk_live_|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{36}|xox[baprs]-|-----BEGIN [A-Z ]*PRIVATE KEY-----)'
+{ git diff HEAD; git log -p --no-color @{upstream}..HEAD 2>/dev/null; } | grep -inE '^\+.*(api[_-]?key|secret|password|passwd|token|authorization|bearer|private[_-]?key|client[_-]?secret|access[_-]?key)\s*["'"'"']?\s*[:=]'
+{ git diff HEAD; git log -p --no-color @{upstream}..HEAD 2>/dev/null; } | grep -nE '^\+.*(AKIA[0-9A-Z]{16}|sk_live_|sk-[A-Za-z0-9]{20,}|ghp_[A-Za-z0-9]{36}|xox[baprs]-|-----BEGIN [A-Z ]*PRIVATE KEY-----)'
 ```
+
+업스트림이 없으면 미푸시 커밋은 `--base <ref>`를 받았을 때만 `<ref>..HEAD`로 보고, 아니면 "미푸시 커밋 확인 못 함"으로 적는다.
+
+**전체 이력**은 지웠어도 남아 있는 시크릿을 찾는 단계다. 파일 이름 검사는 가벼우니 매번 한다:
+
+```bash
+git log --all --pretty=format: --name-only | sort -u | grep -iE '(^|/)(\.env($|\.)|.*\.(pem|key|p8|p12|pfx|jks|keystore|mobileprovision)$|id_(rsa|ed25519|ecdsa)$|credentials\.json$|service-account.*\.json$|google-services\.json$|GoogleService-Info\.plist$|\.npmrc$|\.pypirc$|\.netrc$)' | grep -vE '\.(example|sample|template)$'
+```
+
+지금은 추적하지 않는데 이력에만 있는 후보가 나오면 `git log --all --oneline -- <경로>`로 들어간 커밋을 찾고, 그 시점 내용(`git show <커밋>:<경로>`)으로 위와 같이 판정한다. 이력 전체의 **내용**을 패턴으로 훑는 것(`git log --all -p`)은 사용자가 요청했거나 유출이 의심될 때만 하고, 하지 않았으면 "전체 이력 내용은 확인 안 함"으로 적는다.
 
 상수명·타입 정의·에러 코드·환경 변수 이름은 오탐이다. **값이 실제로 붙어 있는지 파일을 열어 확인한다.** 보고할 때는 값을 마스킹한다 (`sk_live_ab••••`).
 
@@ -123,7 +137,7 @@ node "${CLAUDE_SKILL_DIR}/scripts/deps.mjs"
 
 | | 기준 |
 |---|---|
-| `critical` | 시크릿이 저장소·번들에 들어감, 릴리스에 mock 인증·백도어가 실림, 토큰이 평문 저장소로 이동, 인증 없이 남의 데이터 접근 |
+| `critical` | 실제 값이 확인된 시크릿이 저장소·이력·번들에 들어감, 릴리스에 mock 인증·백도어가 실림, 토큰이 평문 저장소로 이동, 인증 없이 남의 데이터 접근 |
 | `high` | 토큰·개인정보가 실제로 새는 경로, 인젝션, 평문 http 전송, 인증을 우회하는 딥링크·라우트 |
 | `medium` | 조건이 겹쳐야 새는 것, 과다 권한, 방어가 한 겹뿐인 지점 |
 | `low` | 개선 여지. **실익이 없으면 아예 적지 않는다** |
@@ -143,9 +157,13 @@ node "${CLAUDE_SKILL_DIR}/scripts/deps.mjs"
 |---|---|---|---|---|
 | 제목 | critical/high/medium/low | `파일:라인` | 공격자가 무엇을 얻는가 (한 줄) | 무엇을 바꿔야 하는가 |
 
+표에는 코드로 확인한 지적만 넣는다. 심각도는 확인된 영향만으로 정한다.
+
 표 아래에 다음을 적는다:
 
-- **확인했으나 문제 없던 항목:** A~J 중 무엇을 봤고 무엇이 해당 없었는지 한 줄씩. 감사 범위가 드러나야 한다.
+- **확인 못 한 후보:** 후보 / 위치 / 확인하지 못한 이유 / 확정에 필요한 것(예: 키스토어 비밀번호, 실제 값을 아는 사람의 확인). 없으면 "없음". 통과를 기록할지는 `security:sign-off`가 이 목록을 보고 정한다.
+- **A절 검사 범위:** 현재 추적 파일 / 미커밋 변경 / 미푸시 커밋 / 전체 이력(파일 이름 · 내용) 각각 확인함·확인 못 함·안 함.
+- **확인했으나 문제 없던 항목:** A~J 중 무엇을 봤고 무엇이 해당 없었는지 한 줄씩. 감사 범위가 드러나야 한다. 이름으로 걸렸지만 값이 없던 후보도 여기에 적는다.
 - **후속 과제:** 이번 변경 밖의 기존 문제
 
 ## 하지 않을 것

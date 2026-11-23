@@ -3,7 +3,7 @@
 // 옛 프로젝트 선호 문서와 옛 전역 학습 파일을 옮기라고 알리는지, 길이 제한을 지키는지 확인한다.
 
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, describe, test } from "node:test";
@@ -178,9 +178,44 @@ describe("scrub 스크립트", () => {
         assert.doesNotMatch(readFileSync(path.join(repo, "learn/observed.md"), "utf8"), /sk-b{24}/);
     });
 
+    test("임시 파일을 남기지 않고 바꾼다", () => {
+        const repo = makeDir({ "learn/observed.md": "- token=ghp_" + "c".repeat(36) + "\n" });
+        spawnSync(process.execPath, [SCRUB, repo], { encoding: "utf8" });
+        assert.deepEqual(readdirSync(path.join(repo, "learn")), ["observed.md"]);
+    });
+
     test("가릴 값이 없으면 파일을 그대로 둔다", () => {
         const repo = makeDir({ "learn/learned.md": PROFILE });
         spawnSync(process.execPath, [SCRUB, repo], { encoding: "utf8" });
         assert.equal(readFileSync(path.join(repo, "learn/learned.md"), "utf8"), PROFILE);
+    });
+});
+
+describe("learn/ 잠금", () => {
+    const LOCK = path.resolve(import.meta.dirname, "../plugins/prefs/scripts/lock.mjs");
+    const lock = (args, env = {}) => spawnSync(process.execPath, [LOCK, ...args], { encoding: "utf8", env: { ...process.env, ...env } });
+
+    test("한 세션이 잡고 있으면 다른 세션은 기다리다 실패하고, 남의 토큰으로는 풀 수 없다", () => {
+        const repo = makeDir({ "learn/learned.md": PROFILE });
+        const first = lock(["acquire", repo]);
+        assert.equal(first.status, 0);
+        const token = first.stdout.trim();
+        assert.match(token, /^[0-9a-f]{16}$/);
+
+        const second = lock(["acquire", repo], { PREFS_LOCK_WAIT_MS: "300" });
+        assert.equal(second.status, 1);
+        assert.match(second.stderr, /다른 세션이 learn\/을 기록 중/);
+
+        assert.equal(lock(["release", repo, "deadbeefdeadbeef"]).status, 1);
+        assert.equal(lock(["release", repo, token]).status, 0);
+        assert.equal(lock(["acquire", repo]).status, 0);
+    });
+
+    test("비정상 종료로 남은 오래된 잠금은 새로 잡는다", () => {
+        const repo = makeDir({ "learn/learned.md": PROFILE });
+        lock(["acquire", repo]);
+        const again = lock(["acquire", repo], { PREFS_LOCK_STALE_MS: "0", PREFS_LOCK_WAIT_MS: "2000" });
+        assert.equal(again.status, 0);
+        assert.match(again.stderr, /남아 있던 잠금/);
     });
 });
