@@ -56,7 +56,7 @@ Claude가 실행하는 `git commit`과 `git push`를 PreToolUse 훅이 검사합
 
 - 리뷰 통과는 **파일 내용(blob 해시)** 으로 `<git-dir>/codex-review/reviewed.json`에 기록됩니다. 저장소에는 커밋되지 않습니다.
 - 리뷰 뒤에 파일이 바뀌면 다시 리뷰해야 합니다. 리뷰를 마친 변경은 여러 커밋으로 나눠도 됩니다.
-- 문서, 이미지·폰트 같은 에셋, lockfile, `.claude/` 설정은 검사하지 않습니다.
+- 문서, 이미지·폰트 같은 에셋, lockfile은 검사하지 않습니다. 단, 에이전트 동작을 바꾸는 `.claude/` 아래 파일과 `skills/`·`agents/`·`commands/`·`hooks/` 아래의 `.md` 정의 문서는 검사합니다.
 - merge·cherry-pick·revert·rebase 중의 커밋과 원격 브랜치 삭제는 검사하지 않습니다.
 - codex CLI가 없으면 막지 않고 사용자에게 확인을 받습니다.
 - 리뷰가 필요 없는 변경이라고 사용자가 동의하면, 스킬이 이유와 함께 "리뷰 생략"으로 기록합니다.

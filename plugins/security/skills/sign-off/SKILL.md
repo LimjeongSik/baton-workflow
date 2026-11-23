@@ -15,7 +15,8 @@ security 플러그인은 Claude가 실행하는 `git commit` / `git push`를 훅
 - 기록 뒤에 내용이 바뀐 파일은 공백만 바뀌었어도 다시 감사 대상이다.
 - 기록하는 것은 지금 작업 트리 내용이다. `git add`로 올린 뒤 다시 고친 파일은 index의 옛 내용이 기록되지 않으므로, 커밋 전에 다시 `git add`한다.
 - 처음 기록하면 `.git/hooks`에 pre-commit·pre-push 백스톱을 설치한다(기존 훅이나 `core.hooksPath`가 있으면 건너뛴다). Claude Code가 실행한 커밋·푸시만 검사한다. 끄려면 `BATON_BACKSTOP=0`.
-- 문서·에셋·lockfile·`.claude/` 설정은 검사하지 않는다. merge·cherry-pick·revert·rebase 중의 커밋, 원격 브랜치 삭제도 검사하지 않는다.
+- 문서·에셋·lockfile은 검사하지 않는다. merge·cherry-pick·revert·rebase 중의 커밋, 원격 브랜치 삭제도 검사하지 않는다.
+- 단, 에이전트 동작을 바꾸는 파일은 확장자가 문서여도 검사한다: `.claude/` 아래 전부(설정·훅·명령), `skills/`·`agents/`·`commands/`·`hooks/` 아래의 `.md` 정의 문서.
 
 ## 기록해도 되는 조건
 
@@ -26,7 +27,8 @@ security 플러그인은 Claude가 실행하는 `git commit` / `git push`를 훅
 3. `critical`이 남아 있지 않다.
 4. `high`가 "보류"로 남아 있지 않다. 기각한 `high`는 왜 악용될 수 없는지 코드로 보였다.
 5. 시크릿 파일이 이미 추적 중이라는 지적이 없다. 이 경우 키 폐기와 이력 정리는 사용자가 정한다.
-6. 반영한 뒤 프로젝트 검사(lint·타입 검사)를 다시 통과했다.
+6. 감사 보고의 "확인 못 한 후보"가 없다. 있으면 기록하지 말고 후보와 확인하지 못한 이유를 사용자에게 보인 뒤, 사용자가 실제 값이 아니라고 확인했거나 감수하겠다고 하면 그 이유를 `--skip`이 아니라 보고에 적고 기록한다.
+7. 반영한 뒤 프로젝트 검사(lint·타입 검사)를 다시 통과했다.
 
 ## 기록
 

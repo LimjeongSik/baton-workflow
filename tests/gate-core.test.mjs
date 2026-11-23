@@ -358,6 +358,132 @@ describe("ship 단계 기록", () => {
         assert.equal(plan.stages.checks.status, "todo");
     });
 
+    test("같은 내용이어도 실행 환경·설치 상태가 바뀌거나 일부 범위만 돌린 통과는 재사용하지 않는다", () => {
+        const repo = makeRepo();
+        repo.write("src/a.js", "x\n");
+        repo.write(".gitignore", "node_modules/\n");
+        run(STAGE, repo.root, ["pass", "checks", "--cmd", "npm run lint", "--env", "API_MODE"], { NODE_ENV: "test", API_MODE: "a" });
+        run(STAGE, repo.root, ["pass", "tests", "--partial"], { NODE_ENV: "test" });
+        let plan = JSON.parse(run(STAGE, repo.root, ["plan", "--json"], { NODE_ENV: "test", API_MODE: "a" }).stdout);
+        assert.equal(plan.stages.checks.status, "passed");
+        assert.equal(plan.stages.tests.status, "partial");
+
+        plan = JSON.parse(run(STAGE, repo.root, ["plan", "--json"], { NODE_ENV: "production", API_MODE: "a" }).stdout);
+        assert.equal(plan.stages.checks.status, "stale");
+        assert.match(plan.stages.checks.reason, /NODE_ENV/);
+
+        plan = JSON.parse(run(STAGE, repo.root, ["plan", "--json"], { NODE_ENV: "test", API_MODE: "b" }).stdout);
+        assert.match(plan.stages.checks.reason, /API_MODE/);
+
+        repo.write("node_modules/.package-lock.json", "{}\n");
+        plan = JSON.parse(run(STAGE, repo.root, ["plan", "--json"], { NODE_ENV: "test", API_MODE: "a" }).stdout);
+        assert.equal(plan.stages.checks.status, "stale");
+        assert.match(plan.stages.checks.reason, /의존성 설치 상태/);
+
+        const state = readFileSync(path.join(repo.root, ".git/baton/pipeline.json"), "utf8");
+        assert.doesNotMatch(state, /"test"|"production"/, "환경 변수 원문은 저장하지 않는다");
+    });
+
+    test("run은 명령을 실행해 그 환경과 결과를 기록하고, 인라인 환경 변수 값은 원문으로 남기지 않는다", () => {
+        const repo = makeRepo();
+        repo.write("src/a.js", "x\n");
+        const ok = run(STAGE, repo.root, ["run", "tests", "--", "SECRET_MODE=hunter2", "node", "-e", "\"process.exit(0)\""]);
+        assert.equal(ok.status, 0, ok.stderr);
+        let plan = JSON.parse(run(STAGE, repo.root, ["plan", "--json"]).stdout);
+        assert.equal(plan.stages.tests.status, "passed");
+        assert.match(plan.stages.tests.cmd, /^SECRET_MODE=#[0-9a-f]{12} node/);
+        assert.doesNotMatch(readFileSync(path.join(repo.root, ".git/baton/pipeline.json"), "utf8"), /hunter2/);
+        assert.doesNotMatch(readFileSync(path.join(repo.root, ".git/baton/runs.jsonl"), "utf8"), /hunter2/);
+
+        const bad = run(STAGE, repo.root, ["run", "checks", "--", "node", "-e", "\"process.exit(3)\""]);
+        assert.equal(bad.status, 3);
+        plan = JSON.parse(run(STAGE, repo.root, ["plan", "--json"]).stdout);
+        assert.equal(plan.stages.checks.status, "failed");
+        assert.equal(plan.stages.checks.reason, "종료 코드 3");
+    });
+
+    test("공백·따옴표·이스케이프가 든 인라인 값도 통째로 가리고, 해석할 수 없는 명령은 원문을 남기지 않는다", async () => {
+        const { maskCommand, parseCommand } = await import(path.resolve(import.meta.dirname, "../shared/gate-core.mjs"));
+        const cases = [
+            ['API_TOKEN="demo secret tail" npm test', "npm", { API_TOKEN: "demo secret tail" }],
+            ["A='x y' B=z\\ w pnpm run lint", "pnpm", { A: "x y", B: "z w" }],
+            ['env C="say \\"hi\\" there" yarn test', "yarn", { C: 'say "hi" there' }],
+            ["npm test", "npm", {}],
+            ['npm run lint && API_TOKEN="demo secret tail" npm test', "npm", { API_TOKEN: "demo secret tail" }],
+            ['env -u CI API_TOKEN="demo secret tail" npm test', "npm", { API_TOKEN: "demo secret tail" }],
+            ["export NODE_ENV='prod mode' && npm test 2>&1 | tail -5", "export", { NODE_ENV: "prod mode" }],
+            ["npm test -- --reporter dot > out.txt; K='v w' bun test", "npm", { K: "v w" }],
+            ['(A="p q" npm test) || true', "npm", { A: "p q" }],
+            ['npm test -- SOME_ARG="arg secret"', "npm", {}],
+        ];
+        for (const [cmd, program, inline] of cases) {
+            const parsed = parseCommand(cmd);
+            assert.equal(parsed.parsed, true, cmd);
+            assert.equal(parsed.program, program, cmd);
+            assert.deepEqual(parsed.inline, inline, cmd);
+            const masked = maskCommand(cmd);
+            for (const secret of ["demo", "secret", "arg secret", "x y", "z w", "hi", "prod mode", "v w", "p q"]) assert.ok(!masked.includes(secret), `${cmd} → ${masked}`);
+        }
+        for (const cmd of [
+            'API_TOKEN="open quote npm test',
+            "TOKEN=$SECRET npm test",
+            'TOKEN="$(cat key)" npm test',
+            "TOKEN=`cat key` npm test",
+            'npm run lint && TOKEN="$(cat key)" npm test',
+            'bash -c "TOKEN=key npm test"',
+            "env -S 'TOKEN=key npm test'",
+            "cat <<EOF | TOKEN=key npm test",
+        ]) {
+            assert.equal(parseCommand(cmd).parsed, false, cmd);
+            const masked = maskCommand(cmd);
+            assert.match(masked, /원문을 남기지 않음/);
+            assert.ok(!/key|SECRET|open quote/.test(masked), masked);
+        }
+    });
+
+    test("인라인 대입은 그 단순 명령에만 적용된다고 보고, 나머지 명령이 쓰는 셸 환경은 계속 비교한다", () => {
+        const plan = (repo, nodeEnv) => JSON.parse(run(STAGE, repo.root, ["plan", "--json"], { NODE_ENV: nodeEnv }).stdout).stages.tests;
+        const cases = [
+            ["NODE_ENV=test node lint.js && node test.js", "stale"], // 두 번째 명령은 셸의 NODE_ENV를 쓴다
+            ["export NODE_ENV=test; node test.js", "stale"], // export는 보수적으로 덮었다고 보지 않는다
+            ["NODE_ENV=test node lint.js && NODE_ENV=test node test.js", "passed"], // 모든 명령이 각자 대입
+            ["NODE_ENV=test node test.js", "passed"],
+        ];
+        for (const [cmd, expected] of cases) {
+            const repo = makeRepo();
+            repo.write("src/a.js", "x\n");
+            run(STAGE, repo.root, ["pass", "tests", "--cmd", cmd], { NODE_ENV: "production" });
+            assert.equal(plan(repo, "production").status, "passed", cmd);
+            assert.equal(plan(repo, "development").status, expected, cmd);
+        }
+    });
+
+    test("해석할 수 없는 명령으로 기록한 통과는 재사용하지 않는다", () => {
+        const repo = makeRepo();
+        repo.write("src/a.js", "x\n");
+        run(STAGE, repo.root, ["pass", "tests", "--cmd", "TOKEN=$SECRET npm test"]);
+        const plan = JSON.parse(run(STAGE, repo.root, ["plan", "--json"]).stdout);
+        assert.equal(plan.stages.tests.status, "unstable");
+    });
+
+    test("검사 도중 작업 트리가 바뀌면 성공해도 재사용할 수 있는 통과로 기록하지 않는다", () => {
+        const repo = makeRepo();
+        repo.write("src/a.js", "x\n");
+        const script = path.join(repo.root, "..", `${path.basename(repo.root)}-mutate.cjs`);
+        writeFileSync(script, `require("fs").writeFileSync(${JSON.stringify(path.join(repo.root, "src/a.js"))}, "changed\\n");`);
+        const result = run(STAGE, repo.root, ["run", "tests", "--", `node ${JSON.stringify(script)}`]);
+        assert.equal(result.status, 0, result.stderr);
+        assert.match(result.stdout, /검사 도중 작업 트리가 바뀜/);
+        let plan = JSON.parse(run(STAGE, repo.root, ["plan", "--json"]).stdout);
+        assert.equal(plan.stages.tests.status, "todo", "검사 뒤 내용은 검사를 통과한 내용이 아니다");
+
+        repo.write("src/a.js", "x\n"); // 검사 전 내용으로 돌아가도, 도중에 바뀐 실행은 재사용하지 않는다
+        plan = JSON.parse(run(STAGE, repo.root, ["plan", "--json"]).stdout);
+        assert.equal(plan.stages.tests.status, "unstable");
+        const runs = readFileSync(path.join(repo.root, ".git/baton/runs.jsonl"), "utf8");
+        assert.match(runs, /"status":"passed"/, "명령 성공 여부는 남긴다");
+    });
+
     test("fail에는 원인이 필요하고, 실행 기록을 남긴다", () => {
         const repo = makeRepo();
         assert.equal(run(STAGE, repo.root, ["fail", "tests"]).status, 2);

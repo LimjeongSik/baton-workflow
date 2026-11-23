@@ -54,6 +54,7 @@ allowed-tools: Read, Bash, Agent
 - [적용 결과] 프로필 "그림자 대신 1px 테두리"대로 했고 사용자가 고치지 않고 승인
 Claude가 이번 세션에 쓴 파일: src/app/dashboard/page.tsx, ...
 scrub 스크립트: <이 스킬 폴더 기준 ../../scripts/scrub.mjs의 절대 경로>
+lock 스크립트: <이 스킬 폴더 기준 ../../scripts/lock.mjs의 절대 경로>
 ```
 
 - 신호에 키·토큰·비밀번호 값, 이메일·전화번호 같은 개인 정보가 섞여 있으면 넘기기 전에 빼고 방식만 적는다.

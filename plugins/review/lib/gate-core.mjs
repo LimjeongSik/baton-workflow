@@ -8,6 +8,7 @@
 // 통과로 기록하는 것은 검사가 실제로 본 내용, 곧 작업 트리 스냅샷뿐이다. 그와 다른 staged 내용은 기록하지 않는다.
 
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -851,4 +852,261 @@ export function runBackstop({ name, store, gateDisabled, howToFix, hook }) {
             "(사람이 직접 실행한 커밋이면 --no-verify로 건너뛸 수 있습니다.)\n",
     );
     return 1;
+}
+
+// ─── ship 단계 기록의 재사용 판단 ───────────────────────────────────────────
+// git:ship(stage.mjs)과 progress(facts.mjs)가 같은 기준으로 "이 통과 기록을 지금 그대로 써도 되는가"를 판단한다.
+// 통과는 작업 트리 지문(tree)과 실행 환경에 묶인다. 환경 변수는 값 원문 대신 해시 앞 12자만 남긴다.
+
+// 같은 파일이어도 결과를 바꿀 수 있는 환경 변수
+export const STAGE_ENV_NAMES = ["NODE_ENV", "CI", "TZ", "NODE_OPTIONS", "BABEL_ENV", "TS_NODE_PROJECT"];
+// 의존성을 설치하면 바뀌는 메타 파일 (node_modules는 .gitignore라 tree 지문에 안 잡힌다)
+const INSTALL_STATE_FILES = ["node_modules/.package-lock.json", "node_modules/.modules.yaml", "node_modules/.yarn-state.yml", "node_modules/.yarn-integrity", "node_modules/.bun-tag"];
+const PACKAGE_MANAGERS = { npm: "npm", npx: "npm", pnpm: "pnpm", pnpx: "pnpm", yarn: "yarn", bun: "bun", bunx: "bun", deno: "deno" };
+const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+const digest = (text) => createHash("sha256").update(text).digest("hex").slice(0, 12);
+
+// 셸 단어 하나를 읽는다: 작은따옴표, 큰따옴표(안의 \" \\ \$ \` 이스케이프), 따옴표 밖 백슬래시를 셸처럼 해석한다.
+// 값을 확정할 수 없는 것(닫히지 않은 따옴표, $변수·$(…)·백틱 치환)은 null로 돌려 해석 실패로 본다.
+function readWord(cmd, start) {
+    let i = start;
+    let value = "";
+    while (i < cmd.length && !/\s/.test(cmd[i])) {
+        const ch = cmd[i];
+        if (ch === "'") {
+            const close = cmd.indexOf("'", i + 1);
+            if (close < 0) return null;
+            value += cmd.slice(i + 1, close);
+            i = close + 1;
+        } else if (ch === '"') {
+            i++;
+            for (;;) {
+                if (i >= cmd.length) return null;
+                if (cmd[i] === '"') break;
+                if (cmd[i] === "$" || cmd[i] === "`") return null;
+                if (cmd[i] === "\\" && i + 1 < cmd.length && '"\\$`'.includes(cmd[i + 1])) i++;
+                value += cmd[i++];
+            }
+            i++;
+        } else if (ch === "\\") {
+            if (i + 1 >= cmd.length) return null;
+            value += cmd[i + 1];
+            i += 2;
+        } else if (ch === "$" || ch === "`") {
+            return null;
+        } else if (";&|<>()".includes(ch)) {
+            break;
+        } else {
+            value += ch;
+            i++;
+        }
+    }
+    return { value, end: i };
+}
+
+// 셸에 다시 넘겨 해석시키는 실행 파일. 그 인자 안의 대입은 따옴표 속 문자열이라 여기서 가릴 수 없다.
+const NESTED_SHELLS = new Set(["sh", "bash", "zsh", "dash", "ksh", "fish", "eval", "source", "."]);
+// 인자의 대입이 뒤따르는 명령의 환경이 되는 내장 명령 (`export NODE_ENV=test && npm test`)
+const EXPORTERS = new Set(["export", "declare", "typeset", "readonly", "set"]);
+
+// 명령 전체를 셸 단어·연산자로 나눈다. 값을 확정할 수 없으면 null.
+function tokenize(cmd) {
+    const tokens = [];
+    let i = 0;
+    while (i < cmd.length) {
+        const ch = cmd[i];
+        if (ch === "\n") {
+            tokens.push({ type: "op", value: ";" });
+            i++;
+        } else if (/\s/.test(ch)) {
+            i++;
+        } else if (ch === "#" && (i === 0 || /\s/.test(cmd[i - 1]))) {
+            return null; // 주석 뒤는 실행되지 않지만 값이 남을 수 있다
+        } else if (ch === "<" || ch === ">" || (ch === "&" && cmd[i + 1] === ">")) {
+            let j = i + 1;
+            while (j < cmd.length && "<>&|".includes(cmd[j])) j++;
+            const op = cmd.slice(i, j);
+            if (op.startsWith("<<")) return null; // here-doc·here-string 본문은 해석하지 않는다
+            const fd = op.endsWith("&") && /[0-9-]/.test(cmd[j] ?? "");
+            if (fd) j++;
+            tokens.push({ type: "redir", target: !fd });
+            i = j;
+        } else if (";&|()".includes(ch)) {
+            const two = cmd.slice(i, i + 2);
+            const op = ["&&", "||", ";;", "|&"].includes(two) ? two : ch;
+            tokens.push({ type: "op", value: op });
+            i += op.length;
+        } else {
+            const word = readWord(cmd, i);
+            if (!word || word.end === i) return null;
+            tokens.push({ type: "word", value: word.value, start: i, end: word.end, raw: cmd.slice(i, word.end) });
+            i = word.end;
+        }
+    }
+    return tokens;
+}
+
+// 단어가 `이름=값` 꼴인지. 이름 부분은 따옴표 없이 그대로 적혀 있어야 셸이 대입으로 본다.
+function assignmentOf(word) {
+    const eq = word.raw.indexOf("=");
+    if (eq <= 0 || !NAME.test(word.raw.slice(0, eq))) return null;
+    const name = word.raw.slice(0, eq);
+    return { name, value: word.value.slice(name.length + 1) };
+}
+
+const FAILED = Object.freeze({ parsed: false, inline: {}, masks: [], program: null, programs: [], commands: [] });
+
+// 명령 전체(`a && B=x b | c; env -u CI D=y d`)를 읽어 각 단순 명령의 인라인 환경 변수와 실행 파일을 찾는다.
+// - 대입은 단순 명령의 맨 앞(그리고 env 뒤)에 있을 때 환경 변수다. 인자 자리의 `이름=값`도 값이 새지 않게 가린다.
+// - 값을 확정할 수 없는 형태($변수, $(…), 백틱, 닫히지 않은 따옴표, here-doc, 주석, 알 수 없는 env 옵션,
+//   셸에 문자열을 다시 넘기는 sh -c·eval)는 parsed: false다. 그때는 인라인 변수도 실행 파일도 믿지 않고 원문도 남기지 않는다.
+export function parseCommand(cmd = "") {
+    const tokens = tokenize(cmd);
+    if (!tokens) return FAILED;
+    const inline = {};
+    const masks = []; // 가릴 구간 [시작, 끝, 이름, 값]
+    const programs = [];
+    let atStart = true; // 단순 명령의 맨 앞인가
+    let inEnv = false; // env 옵션을 읽는 중인가
+    let exporting = false; // export 등의 인자를 읽는 중인가
+    const commands = []; // 단순 명령마다 { program, own: 그 명령 맨 앞에서 대입한 이름들 }
+    let current = { program: null, own: new Set() };
+    const endCommand = () => {
+        if (current.program) commands.push(current);
+        current = { program: null, own: new Set() };
+    };
+    for (let k = 0; k < tokens.length; k++) {
+        const token = tokens[k];
+        if (token.type === "op") {
+            endCommand();
+            atStart = true;
+            inEnv = false;
+            exporting = false;
+            continue;
+        }
+        if (token.type === "redir") {
+            if (token.target) {
+                if (tokens[k + 1]?.type !== "word") return FAILED;
+                k++; // 리다이렉트 대상 파일
+            }
+            continue;
+        }
+        const assignment = assignmentOf(token);
+        if (assignment) {
+            masks.push([token.start, token.end, assignment.name, assignment.value]);
+            if (atStart || exporting) inline[assignment.name] = assignment.value;
+            if (atStart) current.own.add(assignment.name);
+            inEnv = false;
+            continue;
+        }
+        if (inEnv && token.value.startsWith("-")) {
+            if (token.value === "-u" || token.value === "--unset") {
+                if (tokens[k + 1]?.type !== "word") return FAILED;
+                k++;
+            } else if (!/^(-i|--ignore-environment|-|--|-u\S+|--unset=\S+)$/.test(token.value)) {
+                return FAILED; // -S(문자열을 다시 쪼갬)·-C 등은 해석하지 않는다
+            }
+            continue;
+        }
+        if (atStart) {
+            const name = path.basename(token.value);
+            if (NESTED_SHELLS.has(name)) return FAILED;
+            if (name === "env") {
+                inEnv = true;
+                continue;
+            }
+            programs.push(name);
+            current.program = name;
+            exporting = EXPORTERS.has(name);
+            atStart = false;
+            inEnv = false;
+        }
+    }
+    endCommand();
+    return { parsed: true, inline, masks, program: programs[0] ?? null, programs, commands };
+}
+
+// 기록에 남길 명령: `이름=값` 꼴의 값은 어디에 있든 지문으로 바꿔 원문을 저장하지 않는다.
+// 값을 확정할 수 없는 명령은 원문을 남기지 않는다(값 일부가 새어 나갈 수 있어서).
+export function maskCommand(cmd) {
+    if (!cmd) return cmd;
+    const { parsed, masks } = parseCommand(cmd);
+    if (!parsed) return `(해석할 수 없는 명령이라 원문을 남기지 않음 · #${digest(cmd)})`;
+    let masked = cmd;
+    for (const [start, end, name, value] of [...masks].reverse()) {
+        masked = `${masked.slice(0, start)}${name}=#${digest(value)}${masked.slice(end)}`;
+    }
+    return masked;
+}
+
+function packageManagerVersion(name, root) {
+    if (!name) return null;
+    try {
+        return `${name} ${execFileSync(name, ["--version"], { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 10000 }).trim()}`;
+    } catch {
+        return `${name} (버전 확인 실패)`;
+    }
+}
+
+function declaredPackageManager(root) {
+    try {
+        return JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).packageManager ?? null;
+    } catch {
+        return null;
+    }
+}
+
+// 검사를 실행한 환경. cmd를 주면 인라인 환경 변수와 실제 패키지 매니저 버전까지 담는다.
+export function stageEnvironment(root, { cmd = null, names = [], cwd = process.cwd(), env = process.env } = {}) {
+    const { parsed, inline, programs, commands } = parseCommand(cmd ?? "");
+    // 셸 환경 비교에서 빼도 되는 변수는 모든 단순 명령이 각자 맨 앞에서 대입한 것뿐이다.
+    // `NODE_ENV=test a && b`의 b는 셸의 NODE_ENV를 쓰고, export·set은 앞 명령이 실패하면 적용되지 않을 수 있어 빼지 않는다.
+    const covered = commands.length ? [...commands[0].own].filter((name) => commands.every((command) => command.own.has(name))) : [];
+    const tracked = [...new Set([...STAGE_ENV_NAMES, ...names])].filter((name) => !covered.includes(name)).sort();
+    const installState = INSTALL_STATE_FILES.filter((file) => existsSync(path.join(root, file))).map((file) => `${file}:${digest(readFileSync(path.join(root, file)))}`);
+    return {
+        runtime: `node ${process.version} ${process.platform}-${process.arch}`,
+        packageManager: declaredPackageManager(root),
+        packageManagerVersion: packageManagerVersion(PACKAGE_MANAGERS[programs.find((name) => PACKAGE_MANAGERS[name])], root),
+        install: installState.length ? digest(installState.join("\n")) : null,
+        cwd: path.relative(root, cwd) || ".",
+        vars: Object.fromEntries(tracked.map((name) => [name, env[name] === undefined ? null : digest(env[name])])),
+        inline: Object.fromEntries(Object.entries(inline).map(([name, value]) => [name, digest(value)])),
+        ...(cmd && !parsed ? { commandParsed: false } : {}),
+    };
+}
+
+const ENV_LABELS = { runtime: "런타임", packageManager: "packageManager", packageManagerVersion: "패키지 매니저 버전", install: "의존성 설치 상태", cwd: "작업 디렉터리" };
+
+// 기록된 환경과 지금 환경의 차이. 인라인 환경 변수는 명령의 일부라 다시 비교하지 않는다(같은 명령이면 같은 값).
+export function stageEnvironmentDiff(root, recorded, options = {}) {
+    if (!recorded) return ["실행 환경 기록 없음(이전 버전 기록)"];
+    const pm = recorded.packageManagerVersion?.split(" ")[0];
+    const current = stageEnvironment(root, { ...options, cmd: pm ? pm : null, names: Object.keys(recorded.vars ?? {}) });
+    const diffs = Object.keys(ENV_LABELS)
+        .filter((key) => (recorded[key] ?? null) !== (current[key] ?? null))
+        .map((key) => `${ENV_LABELS[key]} ${recorded[key] ?? "없음"} → ${current[key] ?? "없음"}`);
+    for (const [name, value] of Object.entries(recorded.vars ?? {})) {
+        if (current.vars[name] !== value) diffs.push(`환경 변수 ${name} 변경`);
+    }
+    return diffs;
+}
+
+// 통과 기록 하나를 지금 그대로 쓸 수 있는가.
+//   passed  지금 내용·환경으로 전체 범위를 통과함
+//   partial 일부 범위만 통과함 (관련 테스트만 통과)
+//   stale   내용은 같지만 환경이 다름 (현재 환경에서 재검증 필요)
+//   unstable 검사 도중 작업 트리나 환경이 바뀌었거나, 명령의 환경을 확정할 수 없음 (검사가 본 내용을 특정할 수 없음)
+//   changed 기록 뒤에 파일이 바뀜
+//   failed  실패 기록
+export function stageReuse(root, entry, { fingerprint, tree, ...options } = {}) {
+    if (!entry) return { status: "todo" };
+    if (fingerprint && tree && fingerprint !== tree) return { ...entry, status: "changed", recorded: entry.status };
+    if (entry.status !== "passed") return entry;
+    if (entry.scope === "partial") return { ...entry, status: "partial" };
+    if (entry.unstable) return { ...entry, status: "unstable", reason: entry.unstable };
+    if (entry.env?.commandParsed === false) return { ...entry, status: "unstable", reason: "명령 앞의 환경 변수를 해석할 수 없어 실행 환경을 확정할 수 없음" };
+    const diffs = stageEnvironmentDiff(root, entry.env, options);
+    return diffs.length ? { ...entry, status: "stale", reason: diffs.join(", ") } : entry;
 }

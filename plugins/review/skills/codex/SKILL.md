@@ -16,7 +16,8 @@ Claude가 실행하는 `git commit`/`git push`를 훅이 검사한다.
 - **커밋:** 이번 커밋에 담기는 소스 변경(staged 파일, `git add`나 commit에 준 경로, `commit -a`)이 리뷰를 통과한 내용이어야 한다.
 - **푸시:** 원격에 없는 커밋들이 바꾼 소스 파일의 HEAD 내용이 리뷰를 통과한 내용이어야 한다.
 - 통과는 **파일 내용 단위**로 기록된다(6단계). 리뷰 뒤에 파일이 바뀌면 다시 리뷰해야 하고, 통과한 변경은 여러 커밋으로 나눠도 된다. 공백만 바뀌어도 다시 리뷰 대상이다. 기록하는 것은 지금 작업 트리 내용이므로, `git add` 뒤에 다시 고친 파일은 커밋 전에 다시 `git add`한다.
-- 문서·에셋·lockfile·`.claude/` 설정, merge·cherry-pick·revert·rebase 중의 커밋, 원격 브랜치 삭제는 검사하지 않는다.
+- 문서·에셋·lockfile, merge·cherry-pick·revert·rebase 중의 커밋, 원격 브랜치 삭제는 검사하지 않는다.
+- 단, 에이전트 동작을 바꾸는 파일은 확장자가 문서여도 검사한다: `.claude/` 아래 전부(설정·훅·명령), `skills/`·`agents/`·`commands/`·`hooks/` 아래의 `.md` 정의 문서.
 - codex CLI가 없으면 막는 대신 사용자에게 확인을 받는다.
 - 훅이 판단할 수 없으면 통과시키지 않는다: 입력을 해석하지 못하면 막고, git이 실패하거나 해석할 수 없는 형태(`xargs git commit` 등)면 확인을 받는다. `sh -c`, `eval`, 백틱, git alias 안의 커밋도 검사한다.
 - 처음 통과를 기록하면 `.git/hooks`에 pre-commit·pre-push 백스톱을 설치한다(기존 훅이나 `core.hooksPath`가 있으면 건너뛴다). Claude Code가 실행한 커밋·푸시만 검사하고, 사람이 터미널에서 하는 커밋은 막지 않는다. 끄려면 `BATON_BACKSTOP=0`.

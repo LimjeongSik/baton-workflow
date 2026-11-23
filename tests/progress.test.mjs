@@ -46,7 +46,7 @@ const hook = (root) => {
     assert.equal(result.status, 0, result.stderr);
     return result.stdout.trim() ? JSON.parse(result.stdout).hookSpecificOutput.additionalContext : "";
 };
-const run = (script, root, args = []) => spawnSync(process.execPath, [script, ...args], { cwd: root, env, encoding: "utf8" });
+const run = (script, root, args = [], extraEnv = {}) => spawnSync(process.execPath, [script, ...args], { cwd: root, env: { ...env, ...extraEnv }, encoding: "utf8" });
 
 describe("세션 시작 알림", () => {
     test("문서가 최신이면 아무것도 넣지 않는다", () => {
@@ -80,6 +80,21 @@ describe("facts.mjs", () => {
         repo.write("src/b.js", "z\n");
         facts = run(FACTS, repo.root).stdout;
         assert.match(facts, /다시 실행해서 쓴다/);
+    });
+
+    test("git:ship과 같은 기준으로, 일부 범위·환경이 바뀐 통과는 그대로 쓸 수 없다고 알린다", () => {
+        const repo = makeRepo("2020-01-01");
+        repo.write("src/a.js", "x\n");
+        run(STAGE, repo.root, ["pass", "tests", "--partial", "--cmd", "npm test -- a.test.js"]);
+        let facts = run(FACTS, repo.root).stdout;
+        assert.match(facts, /일부 범위만 통과했다/);
+        assert.doesNotMatch(facts, /모든 기록이 지금 작업 트리·환경과 맞다/);
+
+        run(STAGE, repo.root, ["pass", "tests", "--cmd", "npm test"], { NODE_ENV: "test" });
+        facts = run(FACTS, repo.root, [], { NODE_ENV: "production" }).stdout;
+        assert.match(facts, /실행 환경이 달라졌다\(.*NODE_ENV/);
+        facts = run(FACTS, repo.root, [], { NODE_ENV: "test" }).stdout;
+        assert.match(facts, /모든 기록이 지금 작업 트리·환경과 맞다/);
     });
 
     test("진행 문서가 없으면 init을 안내한다", () => {
